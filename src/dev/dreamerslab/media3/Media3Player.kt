@@ -230,7 +230,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
 
     @SimpleProperty(description = "Whether the current media or the whole queue repeats.", category = PropertyCategory.BEHAVIOR)
     @Options(RepeatMode::class)
-    fun RepeatMode(): String = REPEAT_MODES.entries.first { it.value == player.repeatMode }.key.toUnderlyingValue()
+    fun RepeatMode(): String = REPEAT_MODES.entries.first { it.value == tracks.repeatMode }.key.toUnderlyingValue()
 
     @DesignerProperty(
         editorType = PropertyTypeConstants.PROPERTY_TYPE_CHOICES,
@@ -239,7 +239,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     )
     @SimpleProperty
     fun RepeatMode(@Options(RepeatMode::class) mode: String) {
-        player.repeatMode = REPEAT_MODES.getValue(RepeatMode.fromUnderlyingValue(mode) ?: return)
+        tracks.repeatMode = REPEAT_MODES.getValue(RepeatMode.fromUnderlyingValue(mode) ?: return)
     }
 
     @SimpleProperty(description = "Playback speed, from 0.25 to 2.", category = PropertyCategory.BEHAVIOR)

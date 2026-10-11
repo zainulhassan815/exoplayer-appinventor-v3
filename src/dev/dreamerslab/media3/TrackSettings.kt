@@ -65,11 +65,17 @@ internal class TrackSettings(private val player: ExoPlayer) : TrackChoices {
         get() = player.playbackParameters.speed
         set(value) = player.setPlaybackSpeed(value)
 
-    override var loop: Boolean
-        get() = player.repeatMode == Player.REPEAT_MODE_ONE
+    var repeatMode: Int
+        get() = player.repeatMode
         set(value) {
-            player.repeatMode = if (value) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
-            player.pauseAtEndOfMediaItems = !value
+            player.repeatMode = value
+            player.pauseAtEndOfMediaItems = value != Player.REPEAT_MODE_ONE
+        }
+
+    override var loop: Boolean
+        get() = repeatMode == Player.REPEAT_MODE_ONE
+        set(value) {
+            repeatMode = if (value) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
         }
 
     private fun tracksOf(type: Int): List<Track> =
