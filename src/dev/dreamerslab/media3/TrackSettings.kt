@@ -92,6 +92,22 @@ internal class TrackSettings(private val player: ExoPlayer) : TrackChoices {
             repeatMode = if (value) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
         }
 
+    var preferredAudioLanguage: String
+        get() = player.trackSelectionParameters.preferredAudioLanguages.firstOrNull() ?: ""
+        set(value) = update { setPreferredAudioLanguage(value.ifBlank { null }) }
+
+    var preferredSubtitleLanguage: String
+        get() = player.trackSelectionParameters.preferredTextLanguages.firstOrNull() ?: ""
+        set(value) = update { setPreferredTextLanguage(value.ifBlank { null }) }
+
+    var maxVideoHeight: Int
+        get() = player.trackSelectionParameters.maxVideoHeight.takeIf { it != Int.MAX_VALUE } ?: 0
+        set(value) = update { setMaxVideoSize(Int.MAX_VALUE, if (value > 0) value else Int.MAX_VALUE) }
+
+    var maxVideoBitrateKbps: Int
+        get() = player.trackSelectionParameters.maxVideoBitrate.takeIf { it != Int.MAX_VALUE }?.div(1000) ?: 0
+        set(value) = update { setMaxVideoBitrate(if (value > 0) value * 1000 else Int.MAX_VALUE) }
+
     private fun updatePauseAtEnd() {
         val playsOnWithoutPause = repeatMode == Player.REPEAT_MODE_ONE || (autoAdvance && upNextSeconds == 0)
         player.pauseAtEndOfMediaItems = !playsOnWithoutPause

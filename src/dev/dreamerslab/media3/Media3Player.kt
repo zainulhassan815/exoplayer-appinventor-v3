@@ -2,6 +2,7 @@ package dev.dreamerslab.media3
 
 import android.app.Activity
 import android.content.pm.ActivityInfo
+import android.graphics.Color
 import android.os.Handler
 import android.os.Looper
 import android.view.ViewGroup
@@ -12,12 +13,14 @@ import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
+import androidx.media3.common.Tracks
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.CaptionStyleCompat
 import com.google.appinventor.components.annotations.DesignerProperty
 import com.google.appinventor.components.annotations.Extension
 import com.google.appinventor.components.annotations.Options
@@ -41,7 +44,9 @@ import dev.dreamerslab.media3.helpers.MediaType
 import dev.dreamerslab.media3.helpers.RepeatMode
 import dev.dreamerslab.media3.helpers.ResizeMode
 import dev.dreamerslab.media3.helpers.SeekMode
+import dev.dreamerslab.media3.helpers.SubtitleEdge
 import dev.dreamerslab.media3.ui.Chapter
+import dev.dreamerslab.media3.ui.Choice
 import dev.dreamerslab.media3.ui.DEFAULT_ACCENT
 import dev.dreamerslab.media3.ui.PlayerUi
 
@@ -81,6 +86,13 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     private val headers = mutableMapOf<String, String>()
     private var updatingQueue = false
     private var lastAddedId = ""
+    private var showSubtitles = false
+    private var subtitlesShownFor: String? = null
+    private var subtitleSize = 100
+    private var subtitleTextColor = Color.WHITE
+    private var subtitleBackgroundColor = 0xB8000000.toInt()
+    private var subtitleEdge = SubtitleEdge.None
+    private var subtitleBottomMargin = 8
 
     init {
         player.pauseAtEndOfMediaItems = true
@@ -204,6 +216,21 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         headers.clear()
         http.setDefaultRequestProperties(headers)
     }
+
+    @SimpleFunction(
+        description = "Plays the video quality at the given position in VideoQualities. Index starts at 1; " +
+            "1 is Auto."
+    )
+    fun SelectQuality(index: Int) = select("SelectQuality", tracks.qualities, index)
+
+    @SimpleFunction(description = "Plays the audio track at the given position in AudioTracks. Index starts at 1.")
+    fun SelectAudioTrack(index: Int) = select("SelectAudioTrack", tracks.audioTracks, index)
+
+    @SimpleFunction(
+        description = "Shows the subtitles at the given position in SubtitleTracks. Index starts at 1; 1 turns " +
+            "subtitles off."
+    )
+    fun SelectSubtitle(index: Int) = select("SelectSubtitle", tracks.subtitles, index)
 
     @SimpleFunction(description = "Jumps to the live edge of a live stream.")
     fun SeekToLiveEdge() = player.seekToDefaultPosition()
@@ -472,6 +499,132 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     @SimpleProperty(description = "How far behind the live edge the live stream plays, in milliseconds, or 0.")
     fun LiveOffset(): Long = player.currentLiveOffset.takeIf { it != C.TIME_UNSET } ?: 0
 
+    @SimpleProperty(description = "Video qualities of the current media, starting with Auto.")
+    fun VideoQualities(): YailList = labels(tracks.qualities)
+
+    @SimpleProperty(description = "Audio tracks of the current media.")
+    fun AudioTracks(): YailList = labels(tracks.audioTracks)
+
+    @SimpleProperty(description = "Subtitles of the current media, starting with Off.")
+    fun SubtitleTracks(): YailList = labels(tracks.subtitles)
+
+    @SimpleProperty(
+        description = "Language of the audio track to play when media has several, as a code like \"en\". " +
+            "Empty uses the device language.",
+        category = PropertyCategory.BEHAVIOR
+    )
+    fun PreferredAudioLanguage(): String = tracks.preferredAudioLanguage
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_STRING, defaultValue = "")
+    @SimpleProperty
+    fun PreferredAudioLanguage(language: String) {
+        tracks.preferredAudioLanguage = language
+    }
+
+    @SimpleProperty(
+        description = "Language of the subtitles to show, as a code like \"en\". Subtitles in this language turn " +
+            "on automatically.",
+        category = PropertyCategory.BEHAVIOR
+    )
+    fun PreferredSubtitleLanguage(): String = tracks.preferredSubtitleLanguage
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_STRING, defaultValue = "")
+    @SimpleProperty
+    fun PreferredSubtitleLanguage(language: String) {
+        tracks.preferredSubtitleLanguage = language
+    }
+
+    @SimpleProperty(description = "Turns on subtitles for every new media that has them.", category = PropertyCategory.BEHAVIOR)
+    fun ShowSubtitles(): Boolean = showSubtitles
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "False")
+    @SimpleProperty
+    fun ShowSubtitles(show: Boolean) {
+        showSubtitles = show
+    }
+
+    @SimpleProperty(
+        description = "Highest video height to play, like 720 for 720p, to save data. 0 has no limit.",
+        category = PropertyCategory.BEHAVIOR
+    )
+    fun MaxVideoHeight(): Int = tracks.maxVideoHeight
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_NON_NEGATIVE_INTEGER, defaultValue = "0")
+    @SimpleProperty
+    fun MaxVideoHeight(height: Int) {
+        tracks.maxVideoHeight = height
+    }
+
+    @SimpleProperty(
+        description = "Highest video bitrate to play, in kilobits per second, to save data. 0 has no limit.",
+        category = PropertyCategory.BEHAVIOR
+    )
+    fun MaxVideoBitrate(): Int = tracks.maxVideoBitrateKbps
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_NON_NEGATIVE_INTEGER, defaultValue = "0")
+    @SimpleProperty
+    fun MaxVideoBitrate(kbps: Int) {
+        tracks.maxVideoBitrateKbps = kbps
+    }
+
+    @SimpleProperty(description = "Size of subtitles in percent of the default size.", category = PropertyCategory.APPEARANCE)
+    fun SubtitleSize(): Int = subtitleSize
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_NON_NEGATIVE_INTEGER, defaultValue = "100")
+    @SimpleProperty
+    fun SubtitleSize(percent: Int) {
+        subtitleSize = percent.coerceIn(25, 400)
+        ui?.subtitleScale = subtitleSize / 100f
+    }
+
+    @SimpleProperty(description = "Color of the subtitle text.", category = PropertyCategory.APPEARANCE)
+    fun SubtitleTextColor(): Int = subtitleTextColor
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_COLOR, defaultValue = "&HFFFFFFFF")
+    @SimpleProperty
+    fun SubtitleTextColor(color: Int) {
+        subtitleTextColor = color
+        ui?.captionStyle = captionStyle()
+    }
+
+    @SimpleProperty(description = "Color behind the subtitle text.", category = PropertyCategory.APPEARANCE)
+    fun SubtitleBackgroundColor(): Int = subtitleBackgroundColor
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_COLOR, defaultValue = "&HB8000000")
+    @SimpleProperty
+    fun SubtitleBackgroundColor(color: Int) {
+        subtitleBackgroundColor = color
+        ui?.captionStyle = captionStyle()
+    }
+
+    @SimpleProperty(description = "Edge drawn around the subtitle text, in black.", category = PropertyCategory.APPEARANCE)
+    @Options(SubtitleEdge::class)
+    fun SubtitleEdge(): String = subtitleEdge.toUnderlyingValue()
+
+    @DesignerProperty(
+        editorType = PropertyTypeConstants.PROPERTY_TYPE_CHOICES,
+        editorArgs = ["None", "Outline", "Drop shadow", "Raised", "Depressed"],
+        defaultValue = "None"
+    )
+    @SimpleProperty
+    fun SubtitleEdge(@Options(SubtitleEdge::class) edge: String) {
+        subtitleEdge = SubtitleEdge.fromUnderlyingValue(edge) ?: return
+        ui?.captionStyle = captionStyle()
+    }
+
+    @SimpleProperty(
+        description = "Space below the subtitles, in percent of the player's height.",
+        category = PropertyCategory.APPEARANCE
+    )
+    fun SubtitleBottomMargin(): Int = subtitleBottomMargin
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_NON_NEGATIVE_INTEGER, defaultValue = "8")
+    @SimpleProperty
+    fun SubtitleBottomMargin(percent: Int) {
+        subtitleBottomMargin = percent.coerceIn(0, 90)
+        ui?.subtitleBottomFraction = subtitleBottomMargin / 100f
+    }
+
     @SimpleProperty(description = "Number of media in the queue.")
     fun QueueLength(): Int = player.mediaItemCount
 
@@ -551,6 +704,14 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         dispatch("MediaChanged", index, title)
     }
 
+    @SimpleEvent(
+        description = "The video qualities, audio tracks or subtitles of the current media changed, for example " +
+            "once it loaded."
+    )
+    fun TracksChanged() {
+        dispatch("TracksChanged")
+    }
+
     @SimpleEvent(description = "Media was added to, removed from or moved in the queue.")
     fun QueueChanged(length: Int) {
         dispatch("QueueChanged", length)
@@ -576,6 +737,15 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
 
     override fun onPlayerError(error: PlaybackException) = PlayerError(error.message ?: error.errorCodeName)
 
+    override fun onTracksChanged(changed: Tracks) {
+        val mediaId = player.currentMediaItem?.mediaId
+        if (showSubtitles && mediaId != subtitlesShownFor && tracks.hasSubtitles) {
+            subtitlesShownFor = mediaId
+            tracks.subtitlesEnabled = true
+        }
+        TracksChanged()
+    }
+
     override fun onTimelineChanged(timeline: Timeline, reason: Int) {
         if (reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED && !updatingQueue) QueueChanged(player.mediaItemCount)
     }
@@ -597,6 +767,26 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         ui?.release()
         player.release()
     }
+
+    private fun labels(choices: List<Choice>): YailList = YailList.makeList(choices.map { it.label })
+
+    private fun select(function: String, choices: List<Choice>, index: Int) {
+        val choice = choices.getOrNull(index - 1)
+        if (choice == null) {
+            reportError(function, ERROR_NOT_IN_LIST, "Index $index is not in the list (1 to ${choices.size}).")
+            return
+        }
+        choice.select()
+    }
+
+    private fun captionStyle() = CaptionStyleCompat(
+        subtitleTextColor,
+        subtitleBackgroundColor,
+        Color.TRANSPARENT,
+        CAPTION_EDGES.getValue(subtitleEdge),
+        Color.BLACK,
+        null
+    )
 
     private fun newItem(source: String, title: String): MediaItem =
         MediaItems.create(source, title).also { lastAddedId = it.mediaId }
@@ -637,6 +827,14 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
 
     private companion object {
         const val ERROR_NOT_IN_QUEUE = 30101
+        const val ERROR_NOT_IN_LIST = 30102
+        val CAPTION_EDGES = mapOf(
+            SubtitleEdge.None to CaptionStyleCompat.EDGE_TYPE_NONE,
+            SubtitleEdge.Outline to CaptionStyleCompat.EDGE_TYPE_OUTLINE,
+            SubtitleEdge.DropShadow to CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW,
+            SubtitleEdge.Raised to CaptionStyleCompat.EDGE_TYPE_RAISED,
+            SubtitleEdge.Depressed to CaptionStyleCompat.EDGE_TYPE_DEPRESSED,
+        )
         val RESIZE_MODES = mapOf(
             ResizeMode.Fit to AspectRatioFrameLayout.RESIZE_MODE_FIT,
             ResizeMode.Fill to AspectRatioFrameLayout.RESIZE_MODE_FILL,
@@ -686,6 +884,9 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
             gesturesEnabled = this@Media3Player.gesturesEnabled
             resizeMode = this@Media3Player.resizeMode
             fullscreenOrientation = ORIENTATIONS[this@Media3Player.fullscreenOrientation]
+            captionStyle = this@Media3Player.captionStyle()
+            subtitleScale = subtitleSize / 100f
+            subtitleBottomFraction = subtitleBottomMargin / 100f
             chapters = this@Media3Player.chapters.toList()
         }
     }

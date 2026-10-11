@@ -45,25 +45,29 @@ as real AARs with their resources.
 | `SetMetadata(artist, description, artworkUrl)` | Sets details of the most recently added media |
 | `SetHeader(name, value)` / `ClearHeaders()` | HTTP headers sent with every media request |
 | `SeekToLiveEdge()` | Jumps to the live edge of a live stream |
+| `SelectQuality(index)` / `SelectAudioTrack(index)` / `SelectSubtitle(index)` | Chooses from `VideoQualities`, `AudioTracks` and `SubtitleTracks` |
 | `AddChapter(startSeconds, title)` / `ClearChapters()` | Chapters shown while scrubbing |
 | `Resume()` / `Pause()` / `Stop()` / `Replay()` / `SeekTo(positionMs)` | Playback control |
 | `Next()` / `Previous()` / `PlayAt(index)` / `SeekToItem(index, positionMs)` / `ClearQueue()` | Queue control |
 | `EnterFullscreen()` / `ExitFullscreen()` | Fullscreen control |
 
-Events: `PlaybackStateChanged`, `IsPlayingChanged`, `MediaChanged`, `QueueChanged`,
+Events: `PlaybackStateChanged`, `IsPlayingChanged`, `MediaChanged`, `QueueChanged`, `TracksChanged`,
 `FullscreenChanged`, `PlayerError`. An index outside the queue raises `Screen.ErrorOccurred`
-with error number 30101.
+with error number 30101, and one outside a track list with 30102.
 
 Properties, grouped in the designer:
 
 - Appearance: `AccentColor`, `ResizeMode` (Fit, Fill, Zoom, Fixed width, Fixed height),
-  `FullscreenOrientation` (Auto, Landscape, Portrait, Sensor)
+  `FullscreenOrientation` (Auto, Landscape, Portrait, Sensor), `SubtitleSize`,
+  `SubtitleTextColor`, `SubtitleBackgroundColor`, `SubtitleEdge`, `SubtitleBottomMargin`
 - Behavior: `SeekIncrement`, `ControlsTimeout`, `GesturesEnabled`, `RepeatMode`
   (Off, One, All), `Shuffle`, `Autoplay`, `Volume`, `Muted`, `Pitch`, `SkipSilence`,
-  `SeekMode` (Exact, Closest keyframe), `PlaybackSpeed`, `AutoAdvance`, `UpNextCountdown`
+  `SeekMode` (Exact, Closest keyframe), `PlaybackSpeed`, `AutoAdvance`, `UpNextCountdown`, `PreferredAudioLanguage`,
+  `PreferredSubtitleLanguage`, `ShowSubtitles`, `MaxVideoHeight`, `MaxVideoBitrate`
 - Advanced: `UserAgent`, `TargetLiveOffset`
 - Read-only: `IsPlaying`, `IsFullscreen`, `IsLive`, `LiveOffset`, `Position`, `Duration`,
-  `Title`, `Artist`, `Queue`, `QueueLength`, `CurrentIndex`, `HasNext`, `HasPrevious`
+  `Title`, `Artist`, `Queue`, `QueueLength`, `CurrentIndex`, `HasNext`, `HasPrevious`,
+  `VideoQualities`, `AudioTracks`, `SubtitleTracks`
 
 ## Testing
 

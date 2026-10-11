@@ -88,6 +88,24 @@ internal class PlayerUi(
 
     var fullscreenOrientation: Int? = null
 
+    var captionStyle = CaptionStyleCompat(Color.WHITE, 0xB8000000.toInt(), Color.TRANSPARENT, CaptionStyleCompat.EDGE_TYPE_NONE, Color.BLACK, null)
+        set(value) {
+            field = value
+            playerView.subtitleView?.setStyle(value)
+        }
+
+    var subtitleScale = 1f
+        set(value) {
+            field = value
+            playerView.subtitleView?.setFractionalTextSize(SubtitleView.DEFAULT_TEXT_SIZE_FRACTION * value)
+        }
+
+    var subtitleBottomFraction = SubtitleView.DEFAULT_BOTTOM_PADDING_FRACTION
+        set(value) {
+            field = value
+            updateSubtitlePosition()
+        }
+
     val isFullscreen: Boolean get() = fullscreen.isActive
 
     private val playerView = PlayerView(activity).apply {
@@ -96,9 +114,6 @@ internal class PlayerUi(
         setShutterBackgroundColor(Color.BLACK)
         setKeepContentOnPlayerReset(true)
         setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
-        subtitleView?.setStyle(
-            CaptionStyleCompat(Color.WHITE, 0xB8000000.toInt(), Color.TRANSPARENT, CaptionStyleCompat.EDGE_TYPE_NONE, Color.WHITE, null)
-        )
     }
 
     private val collapse = IconButton(activity, Icon.COLLAPSE, "Exit fullscreen").apply { setOnClickListener { exitFullscreen() } }
@@ -297,6 +312,7 @@ internal class PlayerUi(
 
     init {
         setBackgroundColor(Color.BLACK)
+        playerView.subtitleView?.setStyle(captionStyle)
         addView(playerView, frame(MATCH, MATCH))
         addView(rewindIndicator, frame(0, MATCH, Gravity.START))
         addView(forwardIndicator, frame(0, MATCH, Gravity.END))
@@ -478,10 +494,12 @@ internal class PlayerUi(
     private fun setControlsVisible(visible: Boolean) {
         controlsVisible = visible
         controls.fadeTo(visible)
-        playerView.subtitleView?.setBottomPaddingFraction(
-            if (visible) 0.26f else SubtitleView.DEFAULT_BOTTOM_PADDING_FRACTION
-        )
+        updateSubtitlePosition()
         if (visible) scheduleHide() else removeCallbacks(hideControls)
+    }
+
+    private fun updateSubtitlePosition() {
+        playerView.subtitleView?.setBottomPaddingFraction(if (controlsVisible) maxOf(0.26f, subtitleBottomFraction) else subtitleBottomFraction)
     }
 
     private fun scheduleHide() {

@@ -39,10 +39,10 @@ Planned improvements to Media3Player, worked through in order. Items marked
 
 ## 5. Tracks, quality and subtitles
 
-- [ ] Blocks to list video qualities, audio and subtitle languages and select them
-- [ ] Preferred audio and subtitle language, subtitles on by default
-- [ ] Data saver: maximum resolution and bitrate
-- [ ] Subtitle styling: size, text color, background, edge style, position
+- [x] Blocks to list video qualities, audio and subtitle languages and select them
+- [x] Preferred audio and subtitle language, subtitles on by default
+- [x] Data saver: maximum resolution and bitrate
+- [x] Subtitle styling: size, text color, background, edge style, position
 
 ## 6. Player UI customization
 
