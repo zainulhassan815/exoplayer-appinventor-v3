@@ -39,6 +39,8 @@ import kotlin.math.roundToInt
 
 internal class Chapter(val startMs: Long, val title: String)
 
+internal enum class Control { PREVIOUS_NEXT, SEEK_BUTTONS, SPEED, SUBTITLES, SETTINGS, FULLSCREEN, LOCK, TITLE, TIME_BAR }
+
 private const val LIVE_EDGE_TOLERANCE_MS = 5_000L
 
 @SuppressLint("ViewConstructor")
@@ -87,6 +89,29 @@ internal class PlayerUi(
         }
 
     var fullscreenOrientation: Int? = null
+
+    var hiddenControls: Set<Control> = emptySet()
+        set(value) {
+            field = value
+            applyControlVisibility()
+        }
+
+    var controlsEnabled = true
+        set(value) {
+            field = value
+            if (!value) {
+                sheet.dismiss()
+                errorOverlay.hide()
+                endedOverlay.hide()
+            }
+            setControlsVisible(value)
+        }
+
+    var keepScreenOnWhilePlaying = true
+        set(value) {
+            field = value
+            keepScreenOn = value && player.isPlaying
+        }
 
     var captionStyle = CaptionStyleCompat(Color.WHITE, 0xB8000000.toInt(), Color.TRANSPARENT, CaptionStyleCompat.EDGE_TYPE_NONE, Color.BLACK, null)
         set(value) {
@@ -270,12 +295,13 @@ internal class PlayerUi(
         override fun onDown(e: MotionEvent) = true
 
         override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+            if (!controlsEnabled) return false
             if (locked) flashUnlock() else setControlsVisible(!controlsVisible)
             return true
         }
 
         override fun onDoubleTap(e: MotionEvent): Boolean {
-            if (locked || !gesturesEnabled) return false
+            if (locked || !controlsEnabled || !gesturesEnabled) return false
             when {
                 e.x < width * 0.4f -> seekBy(-seekIncrementMs)
                 e.x > width * 0.6f -> seekBy(seekIncrementMs)
@@ -285,7 +311,7 @@ internal class PlayerUi(
         }
 
         override fun onLongPress(e: MotionEvent) {
-            if (locked || !gesturesEnabled || !player.isPlaying) return
+            if (locked || !controlsEnabled || !gesturesEnabled || !player.isPlaying) return
             boosting = true
             player.setPlaybackSpeed(2f)
             boostBadge.fadeTo(true)
@@ -293,7 +319,7 @@ internal class PlayerUi(
         }
 
         override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
-            if (e1 == null || locked || !gesturesEnabled || !isFullscreen) return false
+            if (e1 == null || locked || !controlsEnabled || !gesturesEnabled || !isFullscreen) return false
             val indicator = adjusting ?: run {
                 val dx = e2.x - e1.x
                 val dy = e2.y - e1.y
@@ -327,6 +353,7 @@ internal class PlayerUi(
         timeBar.listener = scrubbing
         player.addListener(this)
         applyLayout(fullscreen = false)
+        applyControlVisibility()
         applyAccent()
         syncWithPlayer()
         setControlsVisible(true)
@@ -403,6 +430,7 @@ internal class PlayerUi(
     override fun onIsPlayingChanged(isPlaying: Boolean) {
         playPause.icon = if (isPlaying) Icon.PAUSE else Icon.PLAY
         playPause.contentDescription = if (isPlaying) "Pause" else "Play"
+        keepScreenOn = keepScreenOnWhilePlaying && isPlaying
         if (isPlaying) {
             endedOverlay.hide()
             errorOverlay.hide()
@@ -422,6 +450,7 @@ internal class PlayerUi(
     }
 
     override fun onPlayerError(error: PlaybackException) {
+        if (!controlsEnabled) return
         endedOverlay.hide()
         errorOverlay.show(describe(error), error.errorCode)
         setControlsVisible(false)
@@ -492,8 +521,8 @@ internal class PlayerUi(
     }
 
     private fun setControlsVisible(visible: Boolean) {
-        controlsVisible = visible
-        controls.fadeTo(visible)
+        controlsVisible = visible && controlsEnabled
+        controls.fadeTo(controlsVisible)
         updateSubtitlePosition()
         if (visible) scheduleHide() else removeCallbacks(hideControls)
     }
@@ -531,7 +560,7 @@ internal class PlayerUi(
     private fun updateQueueButtons() {
         val queued = player.mediaItemCount > 1
         listOf(previous to player.hasPreviousMediaItem(), next to player.hasNextMediaItem()).forEach { (button, available) ->
-            button.visibility = if (queued) VISIBLE else GONE
+            button.visibility = if (queued && Control.PREVIOUS_NEXT !in hiddenControls) VISIBLE else GONE
             button.isEnabled = available
             button.alpha = if (available) 1f else 0.35f
         }
@@ -544,6 +573,7 @@ internal class PlayerUi(
     }
 
     private fun showEnded() {
+        if (!controlsEnabled) return
         val next = if (player.hasNextMediaItem()) {
             player.getMediaItemAt(player.nextMediaItemIndex).mediaMetadata.title?.toString() ?: "Next video"
         } else {
@@ -637,7 +667,7 @@ internal class PlayerUi(
 
     private fun applyLayout(fullscreen: Boolean) {
         collapse.visibility = if (fullscreen) VISIBLE else GONE
-        title.visibility = if (fullscreen) VISIBLE else INVISIBLE
+        title.visibility = if (fullscreen && Control.TITLE !in hiddenControls) VISIBLE else INVISIBLE
         topBar.setPadding(dp(if (fullscreen) 20 else 4), dp(if (fullscreen) 18 else 6), dp(if (fullscreen) 28 else 6), 0)
         bottomBar.setPadding(dp(if (fullscreen) 24 else 8), 0, dp(if (fullscreen) 24 else 8), dp(if (fullscreen) 12 else 2))
         val gap = dp(if (fullscreen) 18 else 6)
@@ -655,6 +685,22 @@ internal class PlayerUi(
         (brightnessLevel.layoutParams as LayoutParams).marginStart = levelMargin
         (volumeLevel.layoutParams as LayoutParams).marginEnd = levelMargin
         requestLayout()
+    }
+
+    private fun applyControlVisibility() {
+        fun show(view: View, control: Control) {
+            view.visibility = if (control in hiddenControls) GONE else VISIBLE
+        }
+        show(rewind, Control.SEEK_BUTTONS)
+        show(forward, Control.SEEK_BUTTONS)
+        show(speedChip, Control.SPEED)
+        show(subtitlesButton, Control.SUBTITLES)
+        show(settingsButton, Control.SETTINGS)
+        show(fullscreenButton, Control.FULLSCREEN)
+        show(lockButton, Control.LOCK)
+        show(timeBar, Control.TIME_BAR)
+        updateQueueButtons()
+        applyLayout(isFullscreen)
     }
 
     private fun applyAccent() {

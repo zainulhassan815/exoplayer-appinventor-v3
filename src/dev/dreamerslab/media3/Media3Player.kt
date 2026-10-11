@@ -47,6 +47,7 @@ import dev.dreamerslab.media3.helpers.SeekMode
 import dev.dreamerslab.media3.helpers.SubtitleEdge
 import dev.dreamerslab.media3.ui.Chapter
 import dev.dreamerslab.media3.ui.Choice
+import dev.dreamerslab.media3.ui.Control
 import dev.dreamerslab.media3.ui.DEFAULT_ACCENT
 import dev.dreamerslab.media3.ui.PlayerUi
 
@@ -87,6 +88,9 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     private var updatingQueue = false
     private var lastAddedId = ""
     private var showSubtitles = false
+    private var showControls = true
+    private var keepScreenOn = true
+    private var hiddenControls = emptySet<Control>()
     private var subtitlesShownFor: String? = null
     private var subtitleSize = 100
     private var subtitleTextColor = Color.WHITE
@@ -288,6 +292,93 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     fun ClearChapters() {
         chapters.clear()
         ui?.chapters = emptyList()
+    }
+
+    @SimpleProperty(
+        description = "Shows the built-in controls, gestures and overlays. Turn off to build your own controls " +
+            "with blocks.",
+        category = PropertyCategory.APPEARANCE
+    )
+    fun ShowControls(): Boolean = showControls
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "True")
+    @SimpleProperty
+    fun ShowControls(show: Boolean) {
+        showControls = show
+        ui?.controlsEnabled = show
+    }
+
+    @SimpleProperty(description = "Shows the previous and next buttons when the queue has more than one media.", category = PropertyCategory.APPEARANCE)
+    fun ShowPreviousNext(): Boolean = Control.PREVIOUS_NEXT !in hiddenControls
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "True")
+    @SimpleProperty
+    fun ShowPreviousNext(show: Boolean) = showControl(Control.PREVIOUS_NEXT, show)
+
+    @SimpleProperty(description = "Shows the rewind and forward buttons.", category = PropertyCategory.APPEARANCE)
+    fun ShowSeekButtons(): Boolean = Control.SEEK_BUTTONS !in hiddenControls
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "True")
+    @SimpleProperty
+    fun ShowSeekButtons(show: Boolean) = showControl(Control.SEEK_BUTTONS, show)
+
+    @SimpleProperty(description = "Shows the playback speed button.", category = PropertyCategory.APPEARANCE)
+    fun ShowSpeedButton(): Boolean = Control.SPEED !in hiddenControls
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "True")
+    @SimpleProperty
+    fun ShowSpeedButton(show: Boolean) = showControl(Control.SPEED, show)
+
+    @SimpleProperty(description = "Shows the subtitles button.", category = PropertyCategory.APPEARANCE)
+    fun ShowSubtitlesButton(): Boolean = Control.SUBTITLES !in hiddenControls
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "True")
+    @SimpleProperty
+    fun ShowSubtitlesButton(show: Boolean) = showControl(Control.SUBTITLES, show)
+
+    @SimpleProperty(description = "Shows the settings button.", category = PropertyCategory.APPEARANCE)
+    fun ShowSettingsButton(): Boolean = Control.SETTINGS !in hiddenControls
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "True")
+    @SimpleProperty
+    fun ShowSettingsButton(show: Boolean) = showControl(Control.SETTINGS, show)
+
+    @SimpleProperty(description = "Shows the fullscreen button.", category = PropertyCategory.APPEARANCE)
+    fun ShowFullscreenButton(): Boolean = Control.FULLSCREEN !in hiddenControls
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "True")
+    @SimpleProperty
+    fun ShowFullscreenButton(show: Boolean) = showControl(Control.FULLSCREEN, show)
+
+    @SimpleProperty(description = "Shows the button that locks the controls.", category = PropertyCategory.APPEARANCE)
+    fun ShowLockButton(): Boolean = Control.LOCK !in hiddenControls
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "True")
+    @SimpleProperty
+    fun ShowLockButton(show: Boolean) = showControl(Control.LOCK, show)
+
+    @SimpleProperty(description = "Shows the title of the media in fullscreen.", category = PropertyCategory.APPEARANCE)
+    fun ShowTitle(): Boolean = Control.TITLE !in hiddenControls
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "True")
+    @SimpleProperty
+    fun ShowTitle(show: Boolean) = showControl(Control.TITLE, show)
+
+    @SimpleProperty(description = "Shows the seek bar.", category = PropertyCategory.APPEARANCE)
+    fun ShowTimeBar(): Boolean = Control.TIME_BAR !in hiddenControls
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "True")
+    @SimpleProperty
+    fun ShowTimeBar(show: Boolean) = showControl(Control.TIME_BAR, show)
+
+    @SimpleProperty(description = "Keeps the screen on while media plays.", category = PropertyCategory.BEHAVIOR)
+    fun KeepScreenOn(): Boolean = keepScreenOn
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "True")
+    @SimpleProperty
+    fun KeepScreenOn(keep: Boolean) {
+        keepScreenOn = keep
+        ui?.keepScreenOnWhilePlaying = keep
     }
 
     @SimpleProperty(description = "Color of the seek bar, buttons and highlights.", category = PropertyCategory.APPEARANCE)
@@ -768,6 +859,11 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         player.release()
     }
 
+    private fun showControl(control: Control, show: Boolean) {
+        hiddenControls = if (show) hiddenControls - control else hiddenControls + control
+        ui?.hiddenControls = hiddenControls
+    }
+
     private fun labels(choices: List<Choice>): YailList = YailList.makeList(choices.map { it.label })
 
     private fun select(function: String, choices: List<Choice>, index: Int) {
@@ -885,6 +981,9 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
             resizeMode = this@Media3Player.resizeMode
             fullscreenOrientation = ORIENTATIONS[this@Media3Player.fullscreenOrientation]
             captionStyle = this@Media3Player.captionStyle()
+            hiddenControls = this@Media3Player.hiddenControls
+            controlsEnabled = showControls
+            keepScreenOnWhilePlaying = this@Media3Player.keepScreenOn
             subtitleScale = subtitleSize / 100f
             subtitleBottomFraction = subtitleBottomMargin / 100f
             chapters = this@Media3Player.chapters.toList()
