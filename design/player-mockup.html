@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Media3Player — UI mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent: #7c5cff;
+    --accent-soft: color-mix(in srgb, var(--accent) 22%, transparent);
+    --page: #0b0b10;
+    --panel: #15151d;
+    --panel-line: #262633;
+    --text: #f4f4f8;
+    --muted: #9a9aae;
+    --sheet: #1b1b24;
+    --ease: cubic-bezier(.2, .8, .2, 1);
+    font-family: Inter, Roboto, system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--text); padding: 32px 20px 64px; }
+  body > header { max-width: 1240px; margin: 0 auto 24px; display: flex; flex-wrap: wrap; gap: 16px 32px; align-items: end; justify-content: space-between; }
+  h1 { font-size: 22px; margin: 0 0 6px; letter-spacing: -.01em; }
+  body > header p { margin: 0; color: var(--muted); font-size: 14px; max-width: 560px; line-height: 1.5; }
+
+  .toolbar { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; background: var(--panel); border: 1px solid var(--panel-line); border-radius: 14px; padding: 12px 16px; }
+  .toolbar .group { display: flex; gap: 6px; align-items: center; }
+  .toolbar .label { font-size: 12px; color: var(--muted); margin-right: 4px; text-transform: uppercase; letter-spacing: .06em; }
+  .chip { border: 1px solid var(--panel-line); background: transparent; color: var(--text); font: 500 13px Inter, sans-serif; padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+  .chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+  .swatch { width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
+  .swatch[aria-pressed="true"] { border-color: #fff; }
+
+  main { max-width: 1240px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-start; justify-content: center; }
+  figure { margin: 0; display: flex; flex-direction: column; gap: 12px; align-items: center; }
+  figcaption { color: var(--muted); font-size: 13px; }
+
+  .phone { background: #000; border-radius: 44px; padding: 12px; box-shadow: 0 0 0 1px #2a2a36, 0 30px 80px -20px rgba(0,0,0,.8); position: relative; }
+  .phone .screen { border-radius: 34px; overflow: hidden; position: relative; background: #0f0f14; }
+  .portrait .screen { width: 360px; height: 760px; display: flex; flex-direction: column; }
+  .landscape .screen { width: 760px; height: 360px; }
+  .landscape.pulse { animation: pulse 1.2s var(--ease); }
+  @keyframes pulse { 30% { box-shadow: 0 0 0 4px var(--accent), 0 30px 80px -20px rgba(0,0,0,.8); } }
+
+  .statusbar { height: 32px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font-size: 12px; font-weight: 600; color: #fff; }
+  .appbar { height: 52px; display: flex; align-items: center; padding: 0 16px; font-weight: 600; font-size: 17px; background: #17171f; }
+  .content { padding: 16px; display: flex; flex-direction: column; gap: 14px; overflow: hidden; }
+  .content h2 { font-size: 16px; margin: 0; line-height: 1.35; }
+  .content .meta { color: var(--muted); font-size: 12px; }
+  .queue { display: flex; flex-direction: column; gap: 12px; }
+  .queue .item { display: flex; gap: 12px; align-items: center; }
+  .queue .thumb { width: 112px; aspect-ratio: 16/9; border-radius: 10px; flex: none; position: relative; overflow: hidden; }
+  .queue .thumb span { position: absolute; right: 6px; bottom: 6px; background: rgba(0,0,0,.75); font-size: 10px; padding: 2px 5px; border-radius: 4px; }
+  .queue .title { font-size: 13px; font-weight: 500; line-height: 1.35; }
+  .queue .item.now .title { color: var(--accent); }
+
+  .player { position: relative; background: #000; overflow: hidden; user-select: none; -webkit-user-select: none; touch-action: none; color: #fff; }
+  .portrait .player { width: 100%; aspect-ratio: 16/9; flex: none; }
+  .landscape .player { width: 100%; height: 100%; }
+  .player video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: radial-gradient(120% 120% at 30% 20%, #3a2f6b, #0d0b1a 70%); transition: filter .2s; }
+  .player.zoom video { object-fit: cover; }
+
+  .scrim { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,.65), transparent 32%, transparent 60%, rgba(0,0,0,.75)); opacity: 0; transition: opacity .25s var(--ease); pointer-events: none; }
+  .controls { position: absolute; inset: 0; opacity: 0; transition: opacity .25s var(--ease); pointer-events: none; }
+  .player.show .scrim, .player.show .controls { opacity: 1; }
+  .player.show .controls { pointer-events: auto; }
+  .controls > * { pointer-events: auto; }
+
+  .icon { width: 24px; height: 24px; fill: currentColor; display: block; }
+  .btn { background: none; border: 0; color: #fff; padding: 8px; border-radius: 50%; cursor: pointer; display: grid; place-items: center; transition: background .15s, transform .15s var(--ease); }
+  .btn:hover { background: rgba(255,255,255,.12); }
+  .btn:active { transform: scale(.92); }
+  .btn.on { color: var(--accent); }
+
+  .top { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 4px; padding: 8px 8px 0 4px; }
+  .top .titles { flex: 1; min-width: 0; padding-left: 4px; }
+  .top .titles b { display: block; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .top .titles small { display: block; font-size: 11px; color: rgba(255,255,255,.7); }
+  .portrait .top .titles { visibility: hidden; }
+  .landscape .top { padding: 18px 28px 0 20px; }
+  .landscape .top .titles b { font-size: 16px; }
+
+  .center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 40px; }
+  .landscape .center { gap: 72px; }
+  .center .play { width: 64px; height: 64px; background: rgba(0,0,0,.35); backdrop-filter: blur(8px); }
+  .center .play .icon { width: 36px; height: 36px; }
+  .landscape .center .play { width: 76px; height: 76px; }
+  .seekjump { position: relative; }
+  .seekjump .icon { width: 32px; height: 32px; }
+  .seekjump i { position: absolute; inset: 0; display: grid; place-items: center; font: 600 9px Inter, sans-serif; font-style: normal; padding-top: 3px; }
+
+  .bottom { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 12px 6px; }
+  .landscape .bottom { padding: 0 28px 14px; }
+  .row { display: flex; align-items: center; gap: 4px; }
+  .time { font-size: 12px; font-variant-numeric: tabular-nums; padding-left: 4px; flex: 1; }
+  .time span { color: rgba(255,255,255,.65); }
+  .speedchip { font: 600 12px Inter, sans-serif; color: #fff; background: rgba(255,255,255,.14); border: 0; border-radius: 999px; padding: 4px 10px; cursor: pointer; }
+  .speedchip.on { background: var(--accent); }
+
+  .seek { position: relative; height: 22px; cursor: pointer; }
+  .seek .track, .seek .buffer, .seek .progress { position: absolute; left: 0; top: 50%; height: 3px; border-radius: 3px; transform: translateY(-50%); transition: height .15s var(--ease); }
+  .seek .track { right: 0; background: rgba(255,255,255,.25); }
+  .seek .buffer { background: rgba(255,255,255,.45); }
+  .seek .progress { background: var(--accent); }
+  .seek .marker { position: absolute; top: 50%; width: 2px; height: 3px; background: rgba(0,0,0,.6); transform: translateY(-50%); }
+  .seek .thumb { position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); transform: translate(-50%, -50%) scale(.85); transition: transform .15s var(--ease); box-shadow: 0 0 0 4px var(--accent-soft); }
+  .seek:hover .track, .seek:hover .buffer, .seek:hover .progress, .seek.drag .track, .seek.drag .buffer, .seek.drag .progress { height: 5px; }
+  .seek.drag .thumb { transform: translate(-50%, -50%) scale(1.15); }
+  .preview { position: absolute; bottom: 30px; transform: translateX(-50%); display: none; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; }
+  .seek.drag .preview { display: flex; }
+  .preview .frame { width: 128px; aspect-ratio: 16/9; border-radius: 8px; border: 2px solid #fff; background: radial-gradient(120% 120% at 30% 20%, #3a2f6b, #0d0b1a 70%); overflow: hidden; }
+  .preview canvas { width: 100%; height: 100%; display: block; }
+  .preview b { font-size: 12px; background: rgba(0,0,0,.7); padding: 2px 8px; border-radius: 6px; font-variant-numeric: tabular-nums; }
+  .preview small { font-size: 11px; color: rgba(255,255,255,.8); }
+
+  .ripple { position: absolute; top: 0; bottom: 0; width: 40%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: 12px; font-weight: 600; pointer-events: none; opacity: 0; }
+  .ripple.left { left: 0; border-radius: 0 50% 50% 0 / 0 100% 100% 0; }
+  .ripple.right { right: 0; border-radius: 50% 0 0 50% / 100% 0 0 100%; }
+  .ripple.go { animation: ripple .65s var(--ease); background: rgba(255,255,255,.12); }
+  @keyframes ripple { 0% { opacity: 0; } 15% { opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; } }
+  .ripple .chev { display: flex; }
+  .ripple .chev svg { width: 18px; height: 18px; fill: #fff; opacity: .3; animation: chev .6s infinite; }
+  .ripple .chev svg:nth-child(2) { animation-delay: .1s; }
+  .ripple .chev svg:nth-child(3) { animation-delay: .2s; }
+  .ripple.left .chev { flex-direction: row-reverse; }
+  @keyframes chev { 50% { opacity: 1; } }
+
+  .pill { position: absolute; left: 50%; top: 16px; transform: translateX(-50%) translateY(-8px); background: rgba(0,0,0,.65); backdrop-filter: blur(8px); border-radius: 999px; padding: 6px 14px; display: flex; gap: 6px; align-items: center; font-size: 13px; font-weight: 600; opacity: 0; transition: opacity .2s, transform .2s var(--ease); pointer-events: none; }
+  .pill.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .pill .icon { width: 18px; height: 18px; }
+
+  .level { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 168px; border-radius: 22px; background: rgba(0,0,0,.55); backdrop-filter: blur(8px); display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 10px 0; gap: 10px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .level.on { opacity: 1; }
+  .level.brightness { left: 28px; }
+  .level.volume { right: 28px; }
+  .level .bar { width: 6px; flex: 1; border-radius: 3px; background: rgba(255,255,255,.25); position: relative; overflow: hidden; }
+  .level .bar i { position: absolute; left: 0; right: 0; bottom: 0; background: #fff; border-radius: 3px; }
+  .level .icon { width: 20px; height: 20px; }
+  .portrait .level { height: 120px; width: 36px; }
+  .portrait .level.brightness { left: 14px; }
+  .portrait .level.volume { right: 14px; }
+
+  .spinner { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px; border-radius: 50%; border: 4px solid rgba(255,255,255,.18); border-top-color: var(--accent); animation: spin .8s linear infinite; display: none; }
+  .player.buffering .spinner { display: block; }
+  .player.buffering .center .play { visibility: hidden; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .caption { position: absolute; left: 50%; bottom: 14%; transform: translateX(-50%); max-width: 80%; text-align: center; font-size: 15px; line-height: 1.4; display: none; transition: bottom .25s var(--ease); }
+  .portrait .caption { font-size: 12px; bottom: 10%; }
+  .caption span { background: rgba(0,0,0,.72); padding: 2px 8px; border-radius: 4px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+  .player.cc .caption { display: block; }
+  .player.show .caption { bottom: 28%; }
+
+  .overlay { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 12px; background: rgba(8,8,12,.78); backdrop-filter: blur(6px); text-align: center; padding: 16px; }
+  .overlay h3 { margin: 0; font-size: 16px; }
+  .overlay p { margin: 0; font-size: 13px; color: rgba(255,255,255,.7); max-width: 320px; }
+  .portrait .overlay h3 { font-size: 14px; }
+  .portrait .overlay p { font-size: 11px; }
+  .primary { background: var(--accent); color: #fff; border: 0; border-radius: 999px; padding: 9px 18px; font: 600 13px Inter, sans-serif; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+  .primary .icon { width: 18px; height: 18px; }
+  .ghost { background: rgba(255,255,255,.12); color: #fff; border: 0; border-radius: 999px; padding: 9px 18px; font: 600 13px Inter, sans-serif; cursor: pointer; }
+  .player.error .overlay.err, .player.ended .overlay.end { display: flex; }
+  .overlay.err .icon { width: 40px; height: 40px; color: #ff6b6b; }
+
+  .upnext { display: flex; gap: 14px; align-items: center; background: rgba(255,255,255,.08); border-radius: 14px; padding: 10px; text-align: left; }
+  .upnext .thumb { width: 120px; aspect-ratio: 16/9; border-radius: 8px; position: relative; flex: none; background: linear-gradient(135deg, #f7b733, #fc4a1a); }
+  .upnext .ring { position: absolute; inset: 0; display: grid; place-items: center; }
+  .upnext .ring svg { width: 40px; height: 40px; transform: rotate(-90deg); }
+  .upnext .ring circle { fill: none; stroke-width: 3; }
+  .upnext .ring .bg { stroke: rgba(255,255,255,.3); }
+  .upnext .ring .fg { stroke: #fff; stroke-dasharray: 113; stroke-dashoffset: 0; }
+  .upnext .ring b { position: absolute; font-size: 14px; }
+  .upnext small { color: rgba(255,255,255,.65); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+  .upnext div b { display: block; font-size: 14px; margin: 2px 0 8px; }
+  .portrait .upnext { display: none; }
+  .actions { display: flex; gap: 8px; }
+
+  .locked .controls, .locked .scrim { opacity: 0 !important; pointer-events: none !important; }
+  .unlock { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); display: none; gap: 8px; align-items: center; background: rgba(0,0,0,.6); backdrop-filter: blur(8px); border: 0; color: #fff; font: 600 13px Inter, sans-serif; padding: 8px 16px; border-radius: 999px; cursor: pointer; }
+  .unlock .icon { width: 18px; height: 18px; }
+  .player.locked .unlock { display: inline-flex; }
+
+  .sheet-wrap { position: absolute; inset: 0; z-index: 5; color: #fff; background: rgba(0,0,0,.4); opacity: 0; pointer-events: none; transition: opacity .25s; display: flex; align-items: flex-end; justify-content: center; }
+  .sheet-wrap.open { opacity: 1; pointer-events: auto; }
+  .landscape .sheet-wrap { justify-content: flex-end; align-items: stretch; }
+  .sheet { background: var(--sheet); width: 100%; border-radius: 18px 18px 0 0; padding: 8px 0 24px; transform: translateY(100%); transition: transform .3s var(--ease); max-height: 100%; overflow: auto; }
+  .landscape .sheet { width: 320px; border-radius: 18px 0 0 18px; transform: translateX(100%); padding-top: 14px; }
+  .sheet-wrap.open .sheet { transform: none; }
+  .sheet .grab { width: 36px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.25); margin: 0 auto 6px; }
+  .landscape .sheet .grab { display: none; }
+  .sheet header { margin: 0; padding: 6px 16px 8px; display: flex; align-items: center; gap: 4px; }
+  .sheet header b { font-size: 15px; }
+  .sheet .rowbtn { width: 100%; display: flex; align-items: center; gap: 14px; padding: 11px 18px; background: none; border: 0; color: #fff; font: 500 14px Inter, sans-serif; cursor: pointer; text-align: left; }
+  .sheet .rowbtn:hover { background: rgba(255,255,255,.06); }
+  .sheet .rowbtn .icon { width: 20px; height: 20px; color: rgba(255,255,255,.8); }
+  .sheet .rowbtn span { flex: 1; }
+  .sheet .rowbtn em { font-style: normal; color: rgba(255,255,255,.6); font-size: 13px; }
+  .sheet .rowbtn .check { color: var(--accent); visibility: hidden; }
+  .sheet .rowbtn.sel .check { visibility: visible; }
+  .sheet .rowbtn.sel { color: var(--accent); }
+  .switch { width: 36px; height: 20px; border-radius: 10px; background: rgba(255,255,255,.25); position: relative; transition: background .2s; flex: none; }
+  .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .2s var(--ease); }
+  .switch.on { background: var(--accent); }
+  .switch.on::after { transform: translateX(16px); }
+  .speeds { display: flex; flex-wrap: wrap; gap: 8px; padding: 6px 18px 12px; }
+  .speeds button { flex: 1 0 22%; border: 1px solid rgba(255,255,255,.18); background: none; color: #fff; border-radius: 10px; padding: 10px 0; font: 600 13px Inter, sans-serif; cursor: pointer; }
+  .speeds button.sel { background: var(--accent); border-color: var(--accent); }
+
+  .notes { max-width: 1240px; margin: 40px auto 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .note { background: var(--panel); border: 1px solid var(--panel-line); border-radius: 14px; padding: 16px 18px; }
+  .note h4 { margin: 0 0 8px; font-size: 14px; }
+  .note ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Media3Player — UI mockup</h1>
+    <p>Interactive mockup of the custom player UI. Tap the video to show or hide controls, double-tap the sides to seek, hold for 2× speed, and drag up or down on the left or right half of the fullscreen player for brightness and volume.</p>
+  </div>
+  <div class="toolbar">
+    <div class="group" id="states">
+      <span class="label">State</span>
+      <button class="chip" data-state="playing" aria-pressed="true">Playing</button>
+      <button class="chip" data-state="buffering">Buffering</button>
+      <button class="chip" data-state="error">Error</button>
+      <button class="chip" data-state="ended">Ended</button>
+    </div>
+    <div class="group" id="accents">
+      <span class="label">Accent</span>
+      <button class="swatch" style="background:#7c5cff" data-accent="#7c5cff" aria-pressed="true" title="Violet"></button>
+      <button class="swatch" style="background:#ff3b5c" data-accent="#ff3b5c" title="Red"></button>
+      <button class="swatch" style="background:#14b8a6" data-accent="#14b8a6" title="Teal"></button>
+      <button class="swatch" style="background:#f59e0b" data-accent="#f59e0b" title="Amber"></button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <figure>
+    <div class="phone portrait">
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span>5G ▮▮▮ 87%</span></div>
+        <div class="appbar">Media3 Demo</div>
+        <div class="player" data-mode="inline"></div>
+        <div class="content">
+          <div>
+            <h2>Android Screens — a day with your phone</h2>
+            <div class="meta">Media3 test media · 0:10</div>
+          </div>
+          <div class="queue">
+            <div class="item now"><div class="thumb" style="background:radial-gradient(120% 120% at 30% 20%,#3a2f6b,#0d0b1a 70%)"><span>0:10</span></div><div><div class="title">Android Screens</div><div class="meta">Now playing</div></div></div>
+            <div class="item"><div class="thumb" style="background:linear-gradient(135deg,#f7b733,#fc4a1a)"><span>9:56</span></div><div><div class="title">Big Buck Bunny</div><div class="meta">HLS · Up next</div></div></div>
+            <div class="item"><div class="thumb" style="background:linear-gradient(135deg,#43cea2,#185a9d)"><span>12:14</span></div><div><div class="title">Sintel</div><div class="meta">DASH · Subtitles</div></div></div>
+            <div class="item"><div class="thumb" style="background:linear-gradient(135deg,#ee9ca7,#8e44ad)"><span>3:42</span></div><div><div class="title">Tears of Steel</div><div class="meta">MP4 · 4K</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <figcaption>Inline, inside an arrangement</figcaption>
+  </figure>
+
+  <figure>
+    <div class="phone landscape" id="landscape">
+      <div class="screen">
+        <div class="player" data-mode="fullscreen"></div>
+      </div>
+    </div>
+    <figcaption>Fullscreen (landscape, system bars hidden)</figcaption>
+  </figure>
+</main>
+
+<section class="notes">
+  <div class="note">
+    <h4>Gestures</h4>
+    <ul>
+      <li>Tap: show / hide controls (auto-hide after 3s)</li>
+      <li>Double-tap left / right: seek −10s / +10s</li>
+      <li>Hold: 2× speed while pressed</li>
+      <li>Swipe up/down left half: brightness, right half: volume</li>
+    </ul>
+  </div>
+  <div class="note">
+    <h4>Settings sheet</h4>
+    <ul>
+      <li>Quality (Auto + available video tracks)</li>
+      <li>Playback speed 0.25× – 2×</li>
+      <li>Subtitles and audio tracks</li>
+      <li>Zoom to fill, loop</li>
+    </ul>
+  </div>
+  <div class="note">
+    <h4>States</h4>
+    <ul>
+      <li>Buffering spinner, error with retry</li>
+      <li>Ended: replay + up next with countdown</li>
+      <li>Locked: hides controls to avoid accidental touches</li>
+      <li>Accent color and seek step are block properties</li>
+    </ul>
+  </div>
+  <div class="note">
+    <h4>Native implementation</h4>
+    <ul>
+      <li>Media3 PlayerView for the video surface and captions</li>
+      <li>Custom controls built from Android Views in Kotlin</li>
+      <li>No XML layouts or Compose needed</li>
+    </ul>
+  </div>
+</section>
+
+<template id="player-template">
+  <video src="https://storage.googleapis.com/exoplayer-test-media-1/mp4/android-screens-10s.mp4" muted loop playsinline></video>
+  <div class="scrim"></div>
+  <div class="caption"><span></span></div>
+  <div class="ripple left"><div class="chev"></div><span>10 seconds</span></div>
+  <div class="ripple right"><div class="chev"></div><span>10 seconds</span></div>
+  <div class="pill speedpill"><svg class="icon" viewBox="0 0 24 24"><path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg>2× speed</div>
+  <div class="level brightness"><div class="bar"><i></i></div><svg class="icon" viewBox="0 0 24 24"><path d="M20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69zM12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6zm0-10c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"/></svg></div>
+  <div class="level volume"><div class="bar"><i></i></div><svg class="icon" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg></div>
+  <div class="spinner"></div>
+
+  <div class="controls">
+    <div class="top">
+      <button class="btn" data-action="back" title="Back"><svg class="icon" viewBox="0 0 24 24"><path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg></button>
+      <div class="titles"><b>Android Screens — a day with your phone</b><small>Media3 test media</small></div>
+      <button class="btn" data-action="lock" title="Lock controls"><svg class="icon" viewBox="0 0 24 24"><path d="M12 17c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm6-9h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6h1.9c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm0 12H6V10h12v10z"/></svg></button>
+      <button class="btn" data-action="cc" title="Subtitles"><svg class="icon" viewBox="0 0 24 24"><path d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 7H9.5v-.5h-2v3h2V13H11v1c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1c0 .55-.45 1-1 1h-3c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1z"/></svg></button>
+      <button class="btn" data-action="settings" title="Settings"><svg class="icon" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></button>
+    </div>
+
+    <div class="center">
+      <button class="btn seekjump" data-action="rewind" title="Back 10 seconds"><svg class="icon" viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg><i>10</i></button>
+      <button class="btn play" data-action="play" title="Play / pause"><svg class="icon" viewBox="0 0 24 24"><path class="glyph" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg></button>
+      <button class="btn seekjump" data-action="forward" title="Forward 10 seconds"><svg class="icon" viewBox="0 0 24 24" style="transform:scaleX(-1)"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg><i>10</i></button>
+    </div>
+
+    <div class="bottom">
+      <div class="row">
+        <div class="time"><b class="cur">0:00</b> <span>/ <span class="dur">0:00</span></span></div>
+        <button class="speedchip" data-action="speed">1×</button>
+        <button class="btn" data-action="fullscreen" title="Fullscreen"><svg class="icon" viewBox="0 0 24 24"><path class="fs" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg></button>
+      </div>
+      <div class="seek">
+        <div class="track"></div>
+        <div class="buffer"></div>
+        <div class="progress"></div>
+        <div class="marker" style="left:33%"></div>
+        <div class="marker" style="left:68%"></div>
+        <div class="thumb"></div>
+        <div class="preview"><div class="frame"><canvas width="256" height="144"></canvas></div><small class="chapter"></small><b class="ptime">0:00</b></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay err">
+    <svg class="icon" viewBox="0 0 24 24"><path d="M11 15h2v2h-2zm0-8h2v6h-2zm.99-5C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/></svg>
+    <h3>Can't play this video</h3>
+    <p>Check your connection and try again. (Source error 2001)</p>
+    <button class="primary" data-action="retry">Retry</button>
+  </div>
+
+  <div class="overlay end">
+    <div class="upnext">
+      <div class="thumb"><div class="ring"><svg viewBox="0 0 40 40"><circle class="bg" cx="20" cy="20" r="18"/><circle class="fg" cx="20" cy="20" r="18"/></svg><b class="count">5</b></div></div>
+      <div><small>Up next</small><b>Big Buck Bunny</b><div class="actions"><button class="primary" data-action="next">Play now</button><button class="ghost" data-action="cancelnext">Cancel</button></div></div>
+    </div>
+    <button class="primary replay" data-action="replay"><svg class="icon" viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>Replay</button>
+  </div>
+
+  <button class="unlock" data-action="unlock"><svg class="icon" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>Tap to unlock</button>
+
+  <div class="sheet-wrap">
+    <div class="sheet"><div class="grab"></div><div class="sheet-body"></div></div>
+  </div>
+</template>
+
+<script>
+const ICONS = {
+  play: 'M8 5v14l11-7z',
+  pause: 'M6 19h4V5H6v14zm8-14v14h4V5h-4z',
+  fullscreen: 'M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z',
+  fullscreenExit: 'M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z',
+  quality: 'M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 11H9.5v-2h-2v2H6V9h1.5v2.5h2V9H11v6zm2-6h4c.55 0 1 .45 1 1v4c0 .55-.45 1-1 1h-4V9zm1.5 4.5h2v-3h-2v3z',
+  speed: 'M20.38 8.57l-1.23 1.85a8 8 0 0 1-.22 7.58H5.07A8 8 0 0 1 15.58 6.85l1.85-1.23A10 10 0 0 0 3.35 19a2 2 0 0 0 1.72 1h13.85a2 2 0 0 0 1.74-1 10 10 0 0 0-.27-10.44zm-9.79 6.84a2 2 0 0 0 2.83 0l5.66-8.49-8.49 5.66a2 2 0 0 0 0 2.83z',
+  cc: 'M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 7H9.5v-.5h-2v3h2V13H11v1c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1c0 .55-.45 1-1 1h-3c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1z',
+  audio: 'M12 3v9.28c-.47-.17-.97-.28-1.5-.28C8.01 12 6 14.01 6 16.5S8.01 21 10.5 21c2.31 0 4.2-1.75 4.45-4H15V6h4V3h-7z',
+  zoom: 'M19 12h-2v3h-3v2h5v-5zM7 9h3V7H5v5h2V9zm14-6H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16.01H3V4.99h18v14.02z',
+  loop: 'M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z',
+  check: 'M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z',
+  chevronRight: 'M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z',
+  back: 'M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z',
+};
+const icon = (name, cls = 'icon') => `<svg class="${cls}" viewBox="0 0 24 24"><path d="${ICONS[name]}"/></svg>`;
+const fmt = s => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+
+const CAPTIONS = [
+  [0, 2.5, '♪ upbeat music ♪'],
+  [2.5, 5.5, 'Morning. Let\'s see what\'s on today.'],
+  [5.5, 8, 'Looks like it\'s going to be a sunny one.'],
+  [8, 10.5, '♪ music continues ♪'],
+];
+const CHAPTERS = [[0, 'Wake up'], [3.3, 'Morning routine'], [6.8, 'Out the door']];
+const QUALITIES = ['Auto', '1080p', '720p', '480p', '360p'];
+const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+const SUBTITLES = ['Off', 'English', 'English (auto-generated)', 'Español'];
+const AUDIO = ['English', 'English — Descriptive', 'Español'];
+
+class PlayerUI {
+  constructor(root) {
+    this.root = root;
+    this.mode = root.dataset.mode;
+    root.classList.add(this.mode === 'fullscreen' ? 'fs' : 'inline');
+    root.append(document.getElementById('player-template').content.cloneNode(true));
+    this.video = root.querySelector('video');
+    this.q = sel => root.querySelector(sel);
+    this.sheet = this.q('.sheet-wrap');
+    if (this.mode === 'inline') root.closest('.screen').append(this.sheet);
+    this.state = { quality: 'Auto', speed: 1, subtitles: 'Off', audio: 'English', zoom: false, loop: true, brightness: 0.7, volume: 0.6 };
+    this.hideTimer = null;
+    this.tapTimer = null;
+    this.countdown = null;
+    this.buildChevrons();
+    this.bind();
+    this.show();
+    this.video.play().catch(() => {});
+    this.render();
+    if (this.mode === 'inline') this.q('.fs').setAttribute('d', ICONS.fullscreen);
+    else this.q('.fs').setAttribute('d', ICONS.fullscreenExit);
+  }
+
+  buildChevrons() {
+    const chev = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+    this.root.querySelectorAll('.ripple .chev').forEach(el => { el.innerHTML = chev.repeat(3); });
+    this.q('.ripple.left .chev').querySelectorAll('svg').forEach(s => s.style.transform = 'scaleX(-1)');
+  }
+
+  bind() {
+    const v = this.video;
+    v.addEventListener('timeupdate', () => this.render());
+    v.addEventListener('progress', () => this.render());
+    v.addEventListener('loadedmetadata', () => this.render());
+    v.addEventListener('play', () => { this.render(); this.scheduleHide(); });
+    v.addEventListener('pause', () => { this.render(); this.show(); });
+    this.root.addEventListener('click', e => {
+      const action = e.target.closest('[data-action]')?.dataset.action;
+      if (action) { e.stopPropagation(); this.act(action); }
+    });
+    this.bindSurface();
+    this.bindSeek();
+    this.sheet.addEventListener('click', e => { if (e.target === this.sheet) this.closeSheet(); });
+  }
+
+  bindSurface() {
+    let down = null, holdTimer = null, held = false, gesture = null;
+    const surface = this.root;
+    const isControl = t => t.closest('.btn, .speedchip, .seek, .sheet-wrap, .overlay, .unlock, .top, .bottom');
+
+    surface.addEventListener('pointerdown', e => {
+      if (isControl(e.target) || this.blocked()) return;
+      down = { x: e.clientX, y: e.clientY, t: Date.now() };
+      held = false; gesture = null;
+      holdTimer = setTimeout(() => {
+        held = true;
+        this.video.playbackRate = 2;
+        this.q('.speedpill').classList.add('on');
+        this.hide();
+      }, 450);
+    });
+
+    surface.addEventListener('pointermove', e => {
+      if (!down || held) return;
+      const dx = e.clientX - down.x, dy = e.clientY - down.y;
+      if (!gesture && Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) {
+        clearTimeout(holdTimer);
+        const rect = this.root.getBoundingClientRect();
+        gesture = { kind: down.x - rect.left < rect.width / 2 ? 'brightness' : 'volume', start: this.state[down.x - rect.left < rect.width / 2 ? 'brightness' : 'volume'], height: rect.height };
+        this.hide();
+      }
+      if (gesture) {
+        this.state[gesture.kind] = Math.min(1, Math.max(0, gesture.start - dy / (gesture.height * 0.8)));
+        this.q(`.level.${gesture.kind}`).classList.add('on');
+        this.renderLevels();
+      }
+    });
+
+    const end = e => {
+      if (!down) return;
+      clearTimeout(holdTimer);
+      if (held) {
+        this.video.playbackRate = this.state.speed;
+        this.q('.speedpill').classList.remove('on');
+      } else if (gesture) {
+        setTimeout(() => this.root.querySelectorAll('.level').forEach(l => l.classList.remove('on')), 600);
+      } else if (e.type === 'pointerup') {
+        this.tap(e.clientX);
+      }
+      down = null;
+    };
+    surface.addEventListener('pointerup', end);
+    surface.addEventListener('pointerleave', end);
+  }
+
+  tap(x) {
+    if (this.tapTimer) {
+      clearTimeout(this.tapTimer);
+      this.tapTimer = null;
+      const rect = this.root.getBoundingClientRect();
+      const rel = (x - rect.left) / rect.width;
+      if (rel < 0.4) this.seekBy(-10, 'left');
+      else if (rel > 0.6) this.seekBy(10, 'right');
+      return;
+    }
+    this.tapTimer = setTimeout(() => {
+      this.tapTimer = null;
+      if (this.root.classList.contains('locked')) return;
+      this.root.classList.contains('show') ? this.hide() : this.show();
+    }, 240);
+  }
+
+  bindSeek() {
+    const seek = this.q('.seek');
+    const canvas = this.q('.preview canvas');
+    const ctx = canvas.getContext('2d');
+    const at = e => {
+      const r = seek.getBoundingClientRect();
+      return Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+    };
+    const update = f => {
+      const d = this.video.duration || 0;
+      const t = f * d;
+      seek.style.setProperty('--f', f);
+      this.q('.progress').style.width = `${f * 100}%`;
+      this.q('.thumb').style.left = `${f * 100}%`;
+      const preview = this.q('.preview');
+      const r = seek.getBoundingClientRect();
+      const half = 70;
+      preview.style.left = `${Math.min(r.width - half, Math.max(half, f * r.width))}px`;
+      this.q('.ptime').textContent = fmt(t);
+      this.q('.chapter').textContent = [...CHAPTERS].reverse().find(c => t >= c[0])?.[1] ?? '';
+      try { ctx.drawImage(this.video, 0, 0, canvas.width, canvas.height); } catch (_) {}
+      return t;
+    };
+    let dragging = false, wasPlaying = false;
+    seek.addEventListener('pointerdown', e => {
+      dragging = true; wasPlaying = !this.video.paused;
+      seek.setPointerCapture(e.pointerId);
+      seek.classList.add('drag');
+      clearTimeout(this.hideTimer);
+      this.video.pause();
+      this.video.currentTime = update(at(e));
+    });
+    seek.addEventListener('pointermove', e => { if (dragging) this.video.currentTime = update(at(e)); });
+    seek.addEventListener('pointerup', e => {
+      if (!dragging) return;
+      dragging = false;
+      seek.classList.remove('drag');
+      this.video.currentTime = update(at(e));
+      if (wasPlaying) this.video.play();
+    });
+  }
+
+  blocked() {
+    return ['error', 'ended'].some(c => this.root.classList.contains(c)) || this.sheet.classList.contains('open');
+  }
+
+  show() {
+    this.root.classList.add('show');
+    this.scheduleHide();
+  }
+
+  hide() {
+    clearTimeout(this.hideTimer);
+    this.root.classList.remove('show');
+  }
+
+  scheduleHide() {
+    clearTimeout(this.hideTimer);
+    if (!this.video.paused && !this.root.classList.contains('buffering')) {
+      this.hideTimer = setTimeout(() => this.hide(), 3000);
+    }
+  }
+
+  seekBy(seconds, side) {
+    const v = this.video;
+    v.currentTime = Math.min(v.duration || 0, Math.max(0, v.currentTime + seconds));
+    const ripple = this.q(`.ripple.${side}`);
+    ripple.classList.remove('go');
+    void ripple.offsetWidth;
+    ripple.classList.add('go');
+  }
+
+  act(action) {
+    const v = this.video;
+    switch (action) {
+      case 'play': v.paused ? v.play() : v.pause(); break;
+      case 'rewind': this.seekBy(-10, 'left'); this.show(); break;
+      case 'forward': this.seekBy(10, 'right'); this.show(); break;
+      case 'cc':
+        this.state.subtitles = this.state.subtitles === 'Off' ? 'English' : 'Off';
+        this.show(); break;
+      case 'lock': this.root.classList.add('locked'); this.hide(); break;
+      case 'unlock': this.root.classList.remove('locked'); this.show(); break;
+      case 'settings': this.openSheet('main'); break;
+      case 'speed': this.openSheet('speed'); break;
+      case 'fullscreen':
+        if (this.mode === 'inline') {
+          const target = document.getElementById('landscape');
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          target.classList.remove('pulse'); void target.offsetWidth; target.classList.add('pulse');
+        }
+        break;
+      case 'retry': setGlobalState('buffering'); setTimeout(() => setGlobalState('playing'), 1200); break;
+      case 'replay': setGlobalState('playing'); v.currentTime = 0; v.play(); break;
+      case 'next': setGlobalState('playing'); v.currentTime = 0; v.play(); break;
+      case 'cancelnext': this.stopCountdown(); this.q('.upnext').style.display = 'none'; break;
+      case 'back': if (this.mode === 'fullscreen') this.act('fullscreen'); break;
+    }
+    this.render();
+  }
+
+  setState(state) {
+    const r = this.root;
+    r.classList.remove('buffering', 'error', 'ended');
+    this.stopCountdown();
+    this.closeSheet();
+    if (state === 'buffering') { r.classList.add('buffering'); this.show(); clearTimeout(this.hideTimer); }
+    if (state === 'error') { r.classList.add('error'); this.video.pause(); this.hide(); }
+    if (state === 'ended') { r.classList.add('ended'); this.video.pause(); this.hide(); this.startCountdown(); }
+    if (state === 'playing') { this.video.play().catch(() => {}); this.show(); }
+    this.render();
+  }
+
+  startCountdown() {
+    const upnext = this.q('.upnext');
+    upnext.style.display = '';
+    let left = 5;
+    const fg = this.q('.ring .fg');
+    const tick = () => {
+      this.q('.count').textContent = left;
+      fg.style.transition = 'none';
+      fg.style.strokeDashoffset = 113 * (1 - left / 5);
+    };
+    tick();
+    this.countdown = setInterval(() => {
+      left -= 1;
+      if (left <= 0) { this.stopCountdown(); this.act('next'); return; }
+      tick();
+    }, 1000);
+  }
+
+  stopCountdown() {
+    clearInterval(this.countdown);
+    this.countdown = null;
+  }
+
+  openSheet(page) {
+    clearTimeout(this.hideTimer);
+    this.renderSheet(page);
+    this.sheet.classList.add('open');
+  }
+
+  closeSheet() {
+    this.sheet.classList.remove('open');
+    if (this.root.classList.contains('show')) this.scheduleHide();
+  }
+
+  renderSheet(page) {
+    const body = this.sheet.querySelector('.sheet-body');
+    const s = this.state;
+    const header = title => `<header><button class="btn" data-sheet="main">${icon('back')}</button><b>${title}</b></header>`;
+    const options = (key, values, label = x => x) => values.map(v =>
+      `<button class="rowbtn ${s[key] === v ? 'sel' : ''}" data-set="${key}" data-value="${v}">${icon('check', 'icon check')}<span>${label(v)}</span></button>`).join('');
+
+    if (page === 'main') {
+      body.innerHTML = [
+        ['quality', 'quality', 'Quality', `${s.quality}${s.quality === 'Auto' ? ' · 720p' : ''}`],
+        ['speed', 'speed', 'Playback speed', s.speed === 1 ? 'Normal' : `${s.speed}×`],
+        ['subtitles', 'cc', 'Subtitles', s.subtitles],
+        ['audio', 'audio', 'Audio track', s.audio],
+      ].map(([p, i, l, v]) => `<button class="rowbtn" data-sheet="${p}">${icon(i)}<span>${l}</span><em>${v}</em>${icon('chevronRight')}</button>`).join('')
+        + `<button class="rowbtn" data-toggle="zoom">${icon('zoom')}<span>Zoom to fill</span><i class="switch ${s.zoom ? 'on' : ''}"></i></button>`
+        + `<button class="rowbtn" data-toggle="loop">${icon('loop')}<span>Loop</span><i class="switch ${s.loop ? 'on' : ''}"></i></button>`;
+    } else if (page === 'speed') {
+      body.innerHTML = header('Playback speed') + `<div class="speeds">${SPEEDS.map(v =>
+        `<button class="${s.speed === v ? 'sel' : ''}" data-set="speed" data-value="${v}">${v}×</button>`).join('')}</div>`;
+    } else if (page === 'quality') {
+      body.innerHTML = header('Quality') + options('quality', QUALITIES, v => v === 'Auto' ? 'Auto (720p)' : v);
+    } else if (page === 'subtitles') {
+      body.innerHTML = header('Subtitles') + options('subtitles', SUBTITLES);
+    } else if (page === 'audio') {
+      body.innerHTML = header('Audio track') + options('audio', AUDIO);
+    }
+
+    body.querySelectorAll('[data-sheet]').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); this.renderSheet(el.dataset.sheet); }));
+    body.querySelectorAll('[data-toggle]').forEach(el => el.addEventListener('click', e => {
+      e.stopPropagation();
+      s[el.dataset.toggle] = !s[el.dataset.toggle];
+      this.render();
+      this.renderSheet('main');
+    }));
+    body.querySelectorAll('[data-set]').forEach(el => el.addEventListener('click', e => {
+      e.stopPropagation();
+      const key = el.dataset.set;
+      s[key] = key === 'speed' ? Number(el.dataset.value) : el.dataset.value;
+      this.render();
+      this.closeSheet();
+    }));
+  }
+
+  renderLevels() {
+    this.q('.level.brightness .bar i').style.height = `${this.state.brightness * 100}%`;
+    this.q('.level.volume .bar i').style.height = `${this.state.volume * 100}%`;
+    this.video.style.filter = `brightness(${0.45 + this.state.brightness * 0.8})`;
+  }
+
+  render() {
+    const v = this.video, s = this.state, r = this.root;
+    const d = v.duration || 0;
+    this.q('.glyph').setAttribute('d', v.paused ? ICONS.play : ICONS.pause);
+    this.q('.cur').textContent = fmt(v.currentTime);
+    this.q('.dur').textContent = fmt(d);
+    if (!this.q('.seek').classList.contains('drag') && d) {
+      const f = v.currentTime / d;
+      this.q('.progress').style.width = `${f * 100}%`;
+      this.q('.thumb').style.left = `${f * 100}%`;
+    }
+    if (v.buffered.length && d) {
+      this.q('.buffer').style.width = `${(v.buffered.end(v.buffered.length - 1) / d) * 100}%`;
+    }
+    v.playbackRate = this.q('.speedpill').classList.contains('on') ? 2 : s.speed;
+    v.loop = s.loop;
+    const chip = this.q('.speedchip');
+    chip.textContent = `${s.speed}×`;
+    chip.classList.toggle('on', s.speed !== 1);
+    r.classList.toggle('zoom', s.zoom);
+    r.classList.toggle('cc', s.subtitles !== 'Off');
+    this.q('[data-action="cc"]').classList.toggle('on', s.subtitles !== 'Off');
+    const cue = CAPTIONS.find(([a, b]) => v.currentTime >= a && v.currentTime < b);
+    this.q('.caption span').textContent = cue ? cue[2] : '';
+    this.renderLevels();
+  }
+}
+
+const players = [...document.querySelectorAll('.player')].map(el => new PlayerUI(el));
+
+function setGlobalState(state) {
+  document.querySelectorAll('#states .chip').forEach(c => c.setAttribute('aria-pressed', c.dataset.state === state));
+  players.forEach(p => p.setState(state));
+}
+
+document.querySelectorAll('#states .chip').forEach(c => c.addEventListener('click', () => setGlobalState(c.dataset.state)));
+document.querySelectorAll('#accents .swatch').forEach(s => s.addEventListener('click', () => {
+  document.querySelectorAll('#accents .swatch').forEach(x => x.setAttribute('aria-pressed', x === s));
+  document.documentElement.style.setProperty('--accent', s.dataset.accent);
+}));
+</script>
+</body>
+</html>
