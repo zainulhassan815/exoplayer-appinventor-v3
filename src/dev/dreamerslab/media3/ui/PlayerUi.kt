@@ -39,6 +39,9 @@ import androidx.media3.common.Timeline
 import androidx.media3.common.Tracks
 import androidx.core.content.ContextCompat
 import androidx.media3.datasource.DataSourceBitmapLoader
+import androidx.media3.datasource.DataSourceUtil
+import androidx.media3.datasource.DataSpec
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.ui.AspectRatioFrameLayout
@@ -212,7 +215,8 @@ internal class PlayerUi(
     private val bitmaps = DataSourceBitmapLoader.Builder(activity).build()
     private var artworkRequest = 0
     private var thumbnailRequest = 0
-    private var thumbnails: Pair<ThumbnailSprite, Bitmap>? = null
+    private var thumbnailCues: List<ThumbnailCue> = emptyList()
+    private val thumbnailSheets = mutableMapOf<Uri, Bitmap>()
     private var startedPlaying = false
     private var audioOnly = false
 
@@ -656,19 +660,45 @@ internal class PlayerUi(
 
     private fun loadThumbnails() {
         val request = ++thumbnailRequest
-        thumbnails = null
+        thumbnailCues = emptyList()
+        thumbnailSheets.clear()
         scrubThumbnail.visibility = GONE
-        val sprite = ThumbnailSprite.from(player.currentMediaItem?.mediaMetadata?.extras) ?: return
-        val sheet = bitmaps.loadBitmap(sprite.uri)
-        sheet.addListener({
-            if (request != thumbnailRequest) return@addListener
-            thumbnails = runCatching { sheet.get() }.getOrNull()?.let { sprite to it }
-        }, ContextCompat.getMainExecutor(activity))
+        when (val source = ThumbnailSource.from(player.currentMediaItem?.mediaMetadata?.extras)) {
+            is ThumbnailSource.Grid -> useThumbnails(request, source.cues())
+            is ThumbnailSource.Track -> Thread {
+                val vtt = runCatching { readText(source.uri) }.getOrNull() ?: return@Thread
+                post { useThumbnails(request, source.cues(vtt)) }
+            }.start()
+            null -> Unit
+        }
+    }
+
+    private fun readText(uri: Uri): String {
+        val dataSource = DefaultDataSource.Factory(activity).createDataSource()
+        dataSource.open(DataSpec(uri))
+        return try {
+            DataSourceUtil.readToEnd(dataSource).toString(Charsets.UTF_8)
+        } finally {
+            dataSource.close()
+        }
+    }
+
+    private fun useThumbnails(request: Int, cues: List<ThumbnailCue>) {
+        if (request != thumbnailRequest) return
+        thumbnailCues = cues
+        cues.map { it.image }.distinct().forEach { image ->
+            val sheet = bitmaps.loadBitmap(image)
+            sheet.addListener({
+                if (request != thumbnailRequest) return@addListener
+                runCatching { sheet.get() }.getOrNull()?.let { thumbnailSheets[image] = it }
+            }, ContextCompat.getMainExecutor(activity))
+        }
     }
 
     private fun showThumbnail(positionMs: Long) {
-        val (sprite, sheet) = thumbnails ?: return
-        scrubThumbnail.setImageBitmap(sprite.tile(sheet, positionMs))
+        val cue = thumbnailCues.lastOrNull { it.startMs <= positionMs } ?: return
+        val sheet = thumbnailSheets[cue.image] ?: return
+        scrubThumbnail.setImageBitmap(cue.crop(sheet))
         scrubThumbnail.visibility = VISIBLE
     }
 

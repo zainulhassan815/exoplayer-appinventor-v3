@@ -87,7 +87,7 @@ Planned improvements to Media3Player, worked through in order. Items marked
 
 - [x] Capture the current frame to an image file
 - [ ] Several players on one screen (verify)
-- [x] Thumbnail previews while scrubbing (sprite sheets)
+- [x] Thumbnail previews while scrubbing (sprite sheet grids and WebVTT thumbnail tracks)
 
 ## Not possible in App Inventor
 

@@ -43,7 +43,8 @@ as real AARs with their resources.
 | `RemoveAt(index)` / `MoveItem(from, to)` | Edits the queue |
 | `AddSubtitle(source, language, label)` | Adds a subtitle file to the most recently added media |
 | `ClipMedia(startMs, endMs)` | Plays only part of the most recently added media |
-| `SetThumbnails(spriteUrl, columns, rows, intervalSeconds)` | Shows thumbnails from a sprite sheet while scrubbing the most recently added media |
+| `SetThumbnailTrack(vttUrl)` | Shows thumbnails from a WebVTT thumbnail track (like `storyboard.vtt`) while scrubbing the most recently added media |
+| `SetThumbnails(spriteUrl, columns, rows, intervalSeconds)` | Shows thumbnails from a single sprite sheet grid while scrubbing the most recently added media |
 | `SetDrm(scheme, licenseUrl, headers)` | Plays the most recently added media with Widevine, ClearKey or PlayReady DRM |
 | `SetMediaType(type)` | Sets the format (HLS, DASH, SmoothStreaming, RTSP, Progressive) of the most recently added media |
 | `SetMetadata(artist, description, artworkUrl)` | Sets details of the most recently added media |

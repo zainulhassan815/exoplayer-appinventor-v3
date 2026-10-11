@@ -78,7 +78,7 @@ import dev.dreamerslab.media3.ui.Control
 import dev.dreamerslab.media3.ui.DEFAULT_ACCENT
 import dev.dreamerslab.media3.ui.Gesture
 import dev.dreamerslab.media3.ui.PlayerUi
-import dev.dreamerslab.media3.ui.ThumbnailSprite
+import dev.dreamerslab.media3.ui.ThumbnailSource
 import java.io.File
 
 @Extension(
@@ -285,9 +285,17 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
             reportError("SetThumbnails", ERROR_THUMBNAILS, "Columns and rows must be at least 1, and the interval more than 0.")
             return
         }
-        val sprite = ThumbnailSprite(MediaItems.resolve(spriteUrl), columns, rows, (intervalSeconds * 1000).toLong())
-        updateLastAdded { MediaItems.withThumbnails(it, sprite) }
+        val grid = ThumbnailSource.Grid(MediaItems.resolve(spriteUrl), columns, rows, (intervalSeconds * 1000).toLong())
+        updateLastAdded { MediaItems.withThumbnails(it, grid) }
     }
+
+    @SimpleFunction(
+        description = "Shows thumbnails while scrubbing the most recently added media, from a WebVTT thumbnail " +
+            "track (URL or asset) like the storyboard.vtt files video services provide. Each cue points to an " +
+            "image, optionally a region of a sprite sheet with #xywh=x,y,width,height."
+    )
+    fun SetThumbnailTrack(vttUrl: String) =
+        updateLastAdded { MediaItems.withThumbnails(it, ThumbnailSource.Track(MediaItems.resolve(vttUrl))) }
 
     @SimpleFunction(description = "Sends the given HTTP header with every media request.")
     fun SetHeader(name: String, value: String) {
