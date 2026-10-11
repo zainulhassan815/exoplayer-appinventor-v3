@@ -22,6 +22,7 @@ internal const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
 
 internal const val TEXT_PRIMARY = Color.WHITE
 internal const val TEXT_SECONDARY = 0xB3FFFFFF.toInt()
+internal const val DEFAULT_SCRIM = 0xB3000000.toInt()
 internal const val SCRIM_DARK = 0xC708080C.toInt()
 internal const val SURFACE = 0xFF1B1B24.toInt()
 internal const val ERROR = 0xFFFF6B6B.toInt()

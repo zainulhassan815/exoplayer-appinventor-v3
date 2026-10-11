@@ -42,6 +42,14 @@ internal class IconButton(
 
 internal class SeekJumpButton(context: Context, private val forward: Boolean) : FrameLayout(context) {
     private val label = context.text(9f, medium = true).apply { gravity = Gravity.CENTER }
+    private val glyph = IconDrawable(Icon.REPLAY)
+
+    var tint: Int
+        get() = glyph.color
+        set(value) {
+            glyph.color = value
+            label.setTextColor(value)
+        }
 
     var seconds: Int = 10
         set(value) {
@@ -57,7 +65,7 @@ internal class SeekJumpButton(context: Context, private val forward: Boolean) : 
         val size = dp(52)
         layoutParams = frame(size, size)
         addView(ImageView(context).apply {
-            setImageDrawable(IconDrawable(Icon.REPLAY))
+            setImageDrawable(glyph)
             scaleX = if (forward) -1f else 1f
         }, frame(dp(34), dp(34), Gravity.CENTER))
         addView(label, frame(MATCH, MATCH).margins(top = dp(3)))

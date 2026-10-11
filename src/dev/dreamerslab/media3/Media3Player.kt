@@ -91,6 +91,13 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     private var showControls = true
     private var keepScreenOn = true
     private var hiddenControls = emptySet<Control>()
+    private var playerBackground = Color.BLACK
+    private var controlColor = Color.WHITE
+    private var scrimColor = 0xB3000000.toInt()
+    private var seekBarTrackColor = 0x40FFFFFF
+    private var seekBarBufferedColor = 0x73FFFFFF
+    private var cornerRadius = 0
+    private var showRemainingTime = false
     private var subtitlesShownFor: String? = null
     private var subtitleSize = 100
     private var subtitleTextColor = Color.WHITE
@@ -379,6 +386,79 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     fun KeepScreenOn(keep: Boolean) {
         keepScreenOn = keep
         ui?.keepScreenOnWhilePlaying = keep
+    }
+
+    @SimpleProperty(description = "Color shown around and behind the video.", category = PropertyCategory.APPEARANCE)
+    fun BackgroundColor(): Int = playerBackground
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_COLOR, defaultValue = "&HFF000000")
+    @SimpleProperty
+    fun BackgroundColor(color: Int) {
+        playerBackground = color
+        ui?.playerBackground = color
+    }
+
+    @SimpleProperty(description = "Color of the control icons and text.", category = PropertyCategory.APPEARANCE)
+    fun ControlsColor(): Int = controlColor
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_COLOR, defaultValue = "&HFFFFFFFF")
+    @SimpleProperty
+    fun ControlsColor(color: Int) {
+        controlColor = color
+        ui?.controlColor = color
+    }
+
+    @SimpleProperty(description = "Color of the shading behind the controls.", category = PropertyCategory.APPEARANCE)
+    fun ScrimColor(): Int = scrimColor
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_COLOR, defaultValue = "&HB3000000")
+    @SimpleProperty
+    fun ScrimColor(color: Int) {
+        scrimColor = color
+        ui?.scrimColor = color
+    }
+
+    @SimpleProperty(description = "Color of the unplayed part of the seek bar.", category = PropertyCategory.APPEARANCE)
+    fun SeekBarTrackColor(): Int = seekBarTrackColor
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_COLOR, defaultValue = "&H40FFFFFF")
+    @SimpleProperty
+    fun SeekBarTrackColor(color: Int) {
+        seekBarTrackColor = color
+        ui?.seekBarTrackColor = color
+    }
+
+    @SimpleProperty(description = "Color of the buffered part of the seek bar.", category = PropertyCategory.APPEARANCE)
+    fun SeekBarBufferedColor(): Int = seekBarBufferedColor
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_COLOR, defaultValue = "&H73FFFFFF")
+    @SimpleProperty
+    fun SeekBarBufferedColor(color: Int) {
+        seekBarBufferedColor = color
+        ui?.seekBarBufferedColor = color
+    }
+
+    @SimpleProperty(description = "Roundness of the player's corners, in pixels.", category = PropertyCategory.APPEARANCE)
+    fun CornerRadius(): Int = cornerRadius
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_NON_NEGATIVE_INTEGER, defaultValue = "0")
+    @SimpleProperty
+    fun CornerRadius(radius: Int) {
+        cornerRadius = radius
+        ui?.cornerRadius = cornerRadiusPx()
+    }
+
+    @SimpleProperty(
+        description = "Shows the time left instead of the duration next to the position.",
+        category = PropertyCategory.APPEARANCE
+    )
+    fun ShowRemainingTime(): Boolean = showRemainingTime
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "False")
+    @SimpleProperty
+    fun ShowRemainingTime(show: Boolean) {
+        showRemainingTime = show
+        ui?.showRemainingTime = show
     }
 
     @SimpleProperty(description = "Color of the seek bar, buttons and highlights.", category = PropertyCategory.APPEARANCE)
@@ -859,6 +939,8 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         player.release()
     }
 
+    private fun cornerRadiusPx() = cornerRadius * activity.resources.displayMetrics.density
+
     private fun showControl(control: Control, show: Boolean) {
         hiddenControls = if (show) hiddenControls - control else hiddenControls + control
         ui?.hiddenControls = hiddenControls
@@ -982,6 +1064,13 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
             fullscreenOrientation = ORIENTATIONS[this@Media3Player.fullscreenOrientation]
             captionStyle = this@Media3Player.captionStyle()
             hiddenControls = this@Media3Player.hiddenControls
+            playerBackground = this@Media3Player.playerBackground
+            controlColor = this@Media3Player.controlColor
+            scrimColor = this@Media3Player.scrimColor
+            seekBarTrackColor = this@Media3Player.seekBarTrackColor
+            seekBarBufferedColor = this@Media3Player.seekBarBufferedColor
+            cornerRadius = cornerRadiusPx()
+            showRemainingTime = this@Media3Player.showRemainingTime
             controlsEnabled = showControls
             keepScreenOnWhilePlaying = this@Media3Player.keepScreenOn
             subtitleScale = subtitleSize / 100f

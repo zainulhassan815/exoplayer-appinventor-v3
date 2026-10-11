@@ -26,6 +26,20 @@ internal class TimeBar(context: Context) : View(context) {
             invalidate()
         }
 
+    var trackColor: Int
+        get() = trackPaint.color
+        set(value) {
+            trackPaint.color = value
+            invalidate()
+        }
+
+    var bufferColor: Int
+        get() = bufferPaint.color
+        set(value) {
+            bufferPaint.color = value
+            invalidate()
+        }
+
     var chapterStarts: List<Long> = emptyList()
         set(value) {
             field = value

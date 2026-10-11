@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.pm.ActivityInfo
 import android.content.res.ColorStateList
 import android.graphics.Color
+import android.graphics.Outline
 import android.media.AudioManager
 import android.provider.Settings
 import android.text.SpannableStringBuilder
@@ -16,6 +17,7 @@ import android.view.GestureDetector
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewOutlineProvider
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.LinearLayout
@@ -105,6 +107,46 @@ internal class PlayerUi(
                 endedOverlay.hide()
             }
             setControlsVisible(value)
+        }
+
+    var controlColor = TEXT_PRIMARY
+        set(value) {
+            field = value
+            applyControlColor()
+        }
+
+    var playerBackground = Color.BLACK
+        set(value) {
+            field = value
+            setBackgroundColor(value)
+            playerView.setShutterBackgroundColor(value)
+        }
+
+    var scrimColor = DEFAULT_SCRIM
+        set(value) {
+            field = value
+            topScrim.background = verticalGradient(value, Color.TRANSPARENT)
+            bottomScrim.background = verticalGradient(Color.TRANSPARENT, value)
+        }
+
+    var cornerRadius = 0f
+        set(value) {
+            field = value
+            applyCorners()
+        }
+
+    var showRemainingTime = false
+
+    var seekBarTrackColor: Int
+        get() = timeBar.trackColor
+        set(value) {
+            timeBar.trackColor = value
+        }
+
+    var seekBarBufferedColor: Int
+        get() = timeBar.bufferColor
+        set(value) {
+            timeBar.bufferColor = value
         }
 
     var keepScreenOnWhilePlaying = true
@@ -206,9 +248,11 @@ internal class PlayerUi(
         visibility = INVISIBLE
     }
 
+    private val topScrim = View(activity).apply { background = verticalGradient(DEFAULT_SCRIM, Color.TRANSPARENT) }
+    private val bottomScrim = View(activity).apply { background = verticalGradient(Color.TRANSPARENT, DEFAULT_SCRIM) }
     private val controls = FrameLayout(activity).apply {
-        addView(View(activity).apply { background = verticalGradient(0xA6000000.toInt(), Color.TRANSPARENT) }, frame(MATCH, MATCH))
-        addView(View(activity).apply { background = verticalGradient(Color.TRANSPARENT, 0xBF000000.toInt()) }, frame(MATCH, MATCH))
+        addView(topScrim, frame(MATCH, MATCH))
+        addView(bottomScrim, frame(MATCH, MATCH))
         addView(topBar, frame(MATCH, WRAP, Gravity.TOP))
         addView(center, frame(WRAP, WRAP, Gravity.CENTER))
         addView(bottomBar, frame(MATCH, WRAP, Gravity.BOTTOM))
@@ -473,7 +517,7 @@ internal class PlayerUi(
     }
 
     override fun onTracksChanged(tracks: Tracks) {
-        subtitlesButton.tint = if (subtitlesEnabled && hasSubtitles) accent else TEXT_PRIMARY
+        subtitlesButton.tint = if (subtitlesEnabled && hasSubtitles) accent else controlColor
         subtitlesButton.alpha = if (hasSubtitles) 1f else 0.5f
     }
 
@@ -501,8 +545,9 @@ internal class PlayerUi(
         timeBar.update(player.currentPosition, player.bufferedPosition, duration)
         time.text = if (player.isCurrentMediaItemLive) liveTime() else SpannableStringBuilder(formatTime(player.currentPosition)).apply {
             val start = length
-            append(" / ").append(formatTime(duration))
-            setSpan(ForegroundColorSpan(TEXT_SECONDARY), start, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            append(" / ")
+            append(if (showRemainingTime) "-" + formatTime((duration - player.currentPosition).coerceAtLeast(0)) else formatTime(duration))
+            setSpan(ForegroundColorSpan(secondaryControlColor), start, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
     }
 
@@ -511,11 +556,11 @@ internal class PlayerUi(
         val behindMs = window.defaultPositionMs - player.currentPosition
         val atLiveEdge = behindMs < LIVE_EDGE_TOLERANCE_MS
         return SpannableStringBuilder("● LIVE").apply {
-            setSpan(ForegroundColorSpan(if (atLiveEdge) LIVE_RED else TEXT_SECONDARY), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            setSpan(ForegroundColorSpan(if (atLiveEdge) LIVE_RED else secondaryControlColor), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             if (!atLiveEdge) {
                 val start = length
                 append("  -").append(formatTime(behindMs))
-                setSpan(ForegroundColorSpan(TEXT_SECONDARY), start, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                setSpan(ForegroundColorSpan(secondaryControlColor), start, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             }
         }
     }
@@ -681,6 +726,7 @@ internal class PlayerUi(
         fullscreenButton.contentDescription = if (fullscreen) "Exit fullscreen" else "Fullscreen"
         errorOverlay.fullscreen = fullscreen
         endedOverlay.fullscreen = fullscreen
+        applyCorners()
         val levelMargin = dp(if (fullscreen) 28 else 14)
         (brightnessLevel.layoutParams as LayoutParams).marginStart = levelMargin
         (volumeLevel.layoutParams as LayoutParams).marginEnd = levelMargin
@@ -701,6 +747,25 @@ internal class PlayerUi(
         show(timeBar, Control.TIME_BAR)
         updateQueueButtons()
         applyLayout(isFullscreen)
+    }
+
+    private val secondaryControlColor: Int get() = withAlpha(controlColor, 0xB3)
+
+    private fun applyControlColor() {
+        listOf(collapse, lockButton, settingsButton, previous, next, playPause, fullscreenButton).forEach { it.tint = controlColor }
+        rewind.tint = controlColor
+        forward.tint = controlColor
+        title.setTextColor(controlColor)
+        time.setTextColor(controlColor)
+        onTracksChanged(player.currentTracks)
+    }
+
+    private fun applyCorners() {
+        val radius = if (isFullscreen) 0f else cornerRadius
+        clipToOutline = radius > 0
+        outlineProvider = object : ViewOutlineProvider() {
+            override fun getOutline(view: View, outline: Outline) = outline.setRoundRect(0, 0, view.width, view.height, radius)
+        }
     }
 
     private fun applyAccent() {
