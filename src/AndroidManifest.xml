@@ -1,13 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="dev.dreamerslab.media3">
 
-    <application>
-        <!-- You can use any manifest tag that goes inside the <application> tag -->
-        <!-- <service android:name="com.example.MyService"> ... </service> -->
-    </application>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
-    <!-- Other than <application> level tags, you can use <uses-permission> & <queries> tags -->
-    <!-- <uses-permission android:name="android.permission.SEND_SMS"/> -->
-    <!-- <queries> ... </queries> -->
+    <application>
+        <service
+            android:name="dev.dreamerslab.media3.PlaybackService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
+    </application>
 
 </manifest>

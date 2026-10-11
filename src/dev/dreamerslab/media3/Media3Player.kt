@@ -1,6 +1,9 @@
 package dev.dreamerslab.media3
 
 import android.app.Activity
+import android.app.PendingIntent
+import android.content.ComponentName
+import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.graphics.Color
 import android.os.Handler
@@ -19,9 +22,13 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.session.MediaController
+import androidx.media3.session.MediaSession
+import androidx.media3.session.SessionToken
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.CaptionStyleCompat
 import com.google.appinventor.components.annotations.DesignerProperty
+import com.google.common.util.concurrent.ListenableFuture
 import com.google.appinventor.components.annotations.Extension
 import com.google.appinventor.components.annotations.Options
 import com.google.appinventor.components.annotations.PropertyCategory
@@ -88,6 +95,8 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     private val headers = mutableMapOf<String, String>()
     private var updatingQueue = false
     private var lastAddedId = ""
+    private var session: MediaSession? = null
+    private var controller: ListenableFuture<MediaController>? = null
     private var showSubtitles = false
     private var showControls = true
     private var keepScreenOn = true
@@ -396,6 +405,19 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "True")
     @SimpleProperty
     fun ShowTimeBar(show: Boolean) = showControl(Control.TIME_BAR, show)
+
+    @SimpleProperty(
+        description = "Keeps playing when the app goes to the background, with a media notification and controls " +
+            "on the lock screen and for headsets.",
+        category = PropertyCategory.BEHAVIOR
+    )
+    fun BackgroundPlayback(): Boolean = session != null
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "False")
+    @SimpleProperty
+    fun BackgroundPlayback(enabled: Boolean) {
+        if (enabled) startSession() else stopSession()
+    }
 
     @SimpleProperty(description = "Keeps the screen on while media plays.", category = PropertyCategory.BEHAVIOR)
     fun KeepScreenOn(): Boolean = keepScreenOn
@@ -989,15 +1011,18 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     }
 
     override fun onPause() {
+        if (session != null) return
         resumeOnForeground = player.playWhenReady
         player.pause()
     }
 
     override fun onResume() {
         if (resumeOnForeground) player.play()
+        resumeOnForeground = false
     }
 
     override fun onDestroy() {
+        stopSession()
         ui?.release()
         player.release()
     }
@@ -1009,6 +1034,29 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     private fun enableGesture(gesture: Gesture, enabled: Boolean) {
         enabledGestures = if (enabled) enabledGestures + gesture else enabledGestures - gesture
         ui?.enabledGestures = enabledGestures
+    }
+
+    private fun startSession() {
+        if (session != null) return
+        val reopenApp = PendingIntent.getActivity(
+            activity,
+            0,
+            Intent(activity, activity.javaClass).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val newSession = MediaSession.Builder(activity, player).setSessionActivity(reopenApp).build()
+        session = newSession
+        PlaybackService.session = newSession
+        controller = MediaController.Builder(activity, SessionToken(activity, ComponentName(activity, PlaybackService::class.java)))
+            .buildAsync()
+    }
+
+    private fun stopSession() {
+        controller?.let(MediaController::releaseFuture)
+        controller = null
+        PlaybackService.session = null
+        session?.release()
+        session = null
     }
 
     private fun attach(view: PlayerUi, arrangement: HVArrangement) {

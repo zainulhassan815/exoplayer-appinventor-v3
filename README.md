@@ -15,6 +15,7 @@ as real AARs with their resources.
   and volume in fullscreen, each of which can be turned off
 - Fullscreen with landscape or portrait orientation, matching the video
 - Settings sheet: quality, playback speed, subtitles, audio track, zoom and loop
+- Background playback with a media notification, lock screen and headset controls
 - Queue with an up next countdown, replay, error and retry states, and a controls lock
 - MP4, HLS, DASH, SmoothStreaming and RTSP, live streams with a LIVE indicator, DRM
   (Widevine, ClearKey, PlayReady), custom HTTP headers; side-loaded WebVTT, SRT, TTML
@@ -67,7 +68,8 @@ Properties, grouped in the designer:
   `FullscreenOrientation` (Auto, Landscape, Portrait, Sensor), `SubtitleSize`,
   `SubtitleTextColor`, `SubtitleBackgroundColor`, `SubtitleEdge`, `SubtitleBottomMargin`
 - Behavior: `SeekIncrement`, `ControlsTimeout`, `DoubleTapToSeek`, `HoldForSpeed`,
-  `SwipeForBrightness`, `SwipeForVolume`, `PinchToZoom`, `KeepScreenOn`, `RepeatMode`
+  `SwipeForBrightness`, `SwipeForVolume`, `PinchToZoom`, `KeepScreenOn`, `BackgroundPlayback`,
+  `RepeatMode`
   (Off, One, All), `Shuffle`, `Autoplay`, `Volume`, `Muted`, `Pitch`, `SkipSilence`,
   `SeekMode` (Exact, Closest keyframe), `PlaybackSpeed`, `AutoAdvance`, `UpNextCountdown`, `PreferredAudioLanguage`,
   `PreferredSubtitleLanguage`, `ShowSubtitles`, `MaxVideoHeight`, `MaxVideoBitrate`

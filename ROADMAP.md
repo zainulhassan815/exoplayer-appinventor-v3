@@ -60,9 +60,9 @@ Planned improvements to Media3Player, worked through in order. Items marked
 
 - [x] Audio focus: pause or lower volume for calls and other audio
 - [x] Pause when headphones are unplugged
-- [ ] Background audio with a media notification and lock screen controls **+dep**
+- [x] Background audio with a media notification and lock screen controls **+dep**
       (media3-session)
-- [ ] Headset and Bluetooth media buttons (through the session)
+- [x] Headset and Bluetooth media buttons (through the session)
 
 ## 8. Events and data
 
