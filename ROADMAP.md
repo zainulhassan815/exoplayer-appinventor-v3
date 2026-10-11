@@ -33,9 +33,9 @@ Planned improvements to Media3Player, worked through in order. Items marked
 
 ## 4. Queue and playlist
 
-- [ ] Insert, remove and move items; queue length; queue as a list
-- [ ] `CurrentIndex`, `HasNext`, `HasPrevious`; queue changed event
-- [ ] Up next countdown on or off and its length
+- [x] Insert, remove and move items; queue length; queue as a list
+- [x] `CurrentIndex`, `HasNext`, `HasPrevious`; queue changed event
+- [x] Up next countdown on or off and its length
 
 ## 5. Tracks, quality and subtitles
 

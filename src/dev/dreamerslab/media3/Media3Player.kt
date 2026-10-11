@@ -11,6 +11,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.Timeline
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
@@ -33,6 +34,7 @@ import com.google.appinventor.components.runtime.OnDestroyListener
 import com.google.appinventor.components.runtime.OnPauseListener
 import com.google.appinventor.components.runtime.OnResumeListener
 import com.google.appinventor.components.runtime.util.YailDictionary
+import com.google.appinventor.components.runtime.util.YailList
 import dev.dreamerslab.media3.helpers.DrmScheme
 import dev.dreamerslab.media3.helpers.FullscreenOrientation
 import dev.dreamerslab.media3.helpers.MediaType
@@ -78,6 +80,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     private var targetLiveOffset = 0L
     private val headers = mutableMapOf<String, String>()
     private var updatingQueue = false
+    private var lastAddedId = ""
 
     init {
         player.pauseAtEndOfMediaItems = true
@@ -112,15 +115,43 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
             "replacing the queue."
     )
     fun PlayFrom(source: String, title: String, positionMs: Long) {
-        player.setMediaItem(MediaItems.create(source, title), positionMs)
+        player.setMediaItem(newItem(source, title), positionMs)
         player.prepare()
         player.playWhenReady = autoplay
     }
 
     @SimpleFunction(description = "Adds the media at the given url or asset name to the end of the queue.")
-    fun AddToQueue(source: String, title: String) {
-        player.addMediaItem(MediaItems.create(source, title))
-        if (player.playbackState == Player.STATE_IDLE) player.prepare()
+    fun AddToQueue(source: String, title: String) = insert(player.mediaItemCount, source, title)
+
+    @SimpleFunction(
+        description = "Inserts the media at the given url or asset name at the given position in the queue. " +
+            "Index starts at 1; one more than the queue length adds it to the end."
+    )
+    fun InsertAt(index: Int, source: String, title: String) {
+        if (index !in 1..player.mediaItemCount + 1) {
+            reportNotInQueue("InsertAt", index)
+            return
+        }
+        insert(index - 1, source, title)
+    }
+
+    @SimpleFunction(description = "Removes the media at the given position from the queue. Index starts at 1.")
+    fun RemoveAt(index: Int) {
+        if (index !in 1..player.mediaItemCount) {
+            reportNotInQueue("RemoveAt", index)
+            return
+        }
+        player.removeMediaItem(index - 1)
+    }
+
+    @SimpleFunction(description = "Moves the media at one position in the queue to another. Indexes start at 1.")
+    fun MoveItem(from: Int, to: Int) {
+        val invalid = listOf(from, to).firstOrNull { it !in 1..player.mediaItemCount }
+        if (invalid != null) {
+            reportNotInQueue("MoveItem", invalid)
+            return
+        }
+        player.moveMediaItem(from - 1, to - 1)
     }
 
     @SimpleFunction(
@@ -441,6 +472,47 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     @SimpleProperty(description = "How far behind the live edge the live stream plays, in milliseconds, or 0.")
     fun LiveOffset(): Long = player.currentLiveOffset.takeIf { it != C.TIME_UNSET } ?: 0
 
+    @SimpleProperty(description = "Number of media in the queue.")
+    fun QueueLength(): Int = player.mediaItemCount
+
+    @SimpleProperty(description = "Titles of the media in the queue, in order.")
+    fun Queue(): YailList =
+        YailList.makeList((0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaMetadata.title?.toString() ?: "" })
+
+    @SimpleProperty(description = "Position of the current media in the queue, starting at 1, or 0 if the queue is empty.")
+    fun CurrentIndex(): Int = if (player.mediaItemCount == 0) 0 else player.currentMediaItemIndex + 1
+
+    @SimpleProperty(description = "Whether there is media after the current one.")
+    fun HasNext(): Boolean = player.hasNextMediaItem()
+
+    @SimpleProperty(description = "Whether there is media before the current one.")
+    fun HasPrevious(): Boolean = player.hasPreviousMediaItem()
+
+    @SimpleProperty(
+        description = "Plays the next media when one ends. When off, the player stops after each media and offers " +
+            "to replay it or play the next one.",
+        category = PropertyCategory.BEHAVIOR
+    )
+    fun AutoAdvance(): Boolean = tracks.autoAdvance
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "True")
+    @SimpleProperty
+    fun AutoAdvance(autoAdvance: Boolean) {
+        tracks.autoAdvance = autoAdvance
+    }
+
+    @SimpleProperty(
+        description = "Seconds the up next countdown runs before playing the next media. 0 plays it right away.",
+        category = PropertyCategory.BEHAVIOR
+    )
+    fun UpNextCountdown(): Int = tracks.upNextSeconds
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_NON_NEGATIVE_INTEGER, defaultValue = "5")
+    @SimpleProperty
+    fun UpNextCountdown(seconds: Int) {
+        tracks.upNextSeconds = seconds.coerceAtLeast(0)
+    }
+
     @SimpleProperty(description = "Artist of the current media.")
     fun Artist(): String = player.mediaMetadata.artist?.toString() ?: ""
 
@@ -479,6 +551,11 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         dispatch("MediaChanged", index, title)
     }
 
+    @SimpleEvent(description = "Media was added to, removed from or moved in the queue.")
+    fun QueueChanged(length: Int) {
+        dispatch("QueueChanged", length)
+    }
+
     @SimpleEvent(description = "The player entered or left fullscreen.")
     fun FullscreenChanged(isFullscreen: Boolean) {
         dispatch("FullscreenChanged", isFullscreen)
@@ -499,6 +576,10 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
 
     override fun onPlayerError(error: PlaybackException) = PlayerError(error.message ?: error.errorCodeName)
 
+    override fun onTimelineChanged(timeline: Timeline, reason: Int) {
+        if (reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED && !updatingQueue) QueueChanged(player.mediaItemCount)
+    }
+
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
         if (mediaItem != null && !updatingQueue) MediaChanged(player.currentMediaItemIndex + 1, mediaItem.mediaMetadata.title?.toString() ?: "")
     }
@@ -517,11 +598,21 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         player.release()
     }
 
+    private fun newItem(source: String, title: String): MediaItem =
+        MediaItems.create(source, title).also { lastAddedId = it.mediaId }
+
+    private fun insert(index: Int, source: String, title: String) {
+        player.addMediaItem(index, newItem(source, title))
+        if (player.playbackState == Player.STATE_IDLE) player.prepare()
+    }
+
+    private fun reportNotInQueue(function: String, index: Int) =
+        reportError(function, ERROR_NOT_IN_QUEUE, "Index $index is not in the queue (1 to ${player.mediaItemCount}).")
+
     private fun updateLastAdded(update: (MediaItem) -> MediaItem) {
-        val index = player.mediaItemCount - 1
-        if (index < 0) return
+        val index = (0 until player.mediaItemCount).firstOrNull { player.getMediaItemAt(it).mediaId == lastAddedId } ?: return
         updatingQueue = true
-        player.addMediaItem(update(player.getMediaItemAt(index)))
+        player.addMediaItem(index + 1, update(player.getMediaItemAt(index)))
         if (index == player.currentMediaItemIndex) player.seekTo(index + 1, player.currentPosition)
         player.removeMediaItem(index)
         updatingQueue = false
@@ -529,7 +620,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
 
     private fun seekToItem(function: String, index: Int, positionMs: Long) {
         if (index !in 1..player.mediaItemCount) {
-            reportError(function, ERROR_NOT_IN_QUEUE, "Index $index is not in the queue (1 to ${player.mediaItemCount}).")
+            reportNotInQueue(function, index)
             return
         }
         player.seekTo(index - 1, positionMs)

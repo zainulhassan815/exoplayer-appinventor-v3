@@ -9,8 +9,11 @@ import java.util.UUID
 
 internal object MediaItems {
 
+    private var nextId = 0
+
     fun create(source: String, title: String): MediaItem =
         MediaItem.Builder()
+            .setMediaId("media-${nextId++}")
             .setUri(resolve(source))
             .setMediaMetadata(MediaMetadata.Builder().setTitle(title.ifBlank { null }).build())
             .build()

@@ -19,6 +19,8 @@ internal interface TrackChoices {
     var subtitlesEnabled: Boolean
     var speed: Float
     var loop: Boolean
+    val autoAdvance: Boolean
+    val upNextSeconds: Int
 }
 
 internal interface PlaybackSettings : TrackChoices {

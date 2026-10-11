@@ -532,7 +532,7 @@ internal class PlayerUi(
             null
         }
         setControlsVisible(false)
-        endedOverlay.show(next)
+        endedOverlay.show(next, if (autoAdvance) upNextSeconds else 0)
     }
 
     private fun replay() {

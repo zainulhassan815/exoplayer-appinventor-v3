@@ -36,7 +36,8 @@ as real AARs with their resources.
 |---|---|
 | `Create(arrangement)` | Shows the player inside the arrangement |
 | `Play(source, title)` / `PlayFrom(source, title, positionMs)` | Plays media, replacing the queue |
-| `AddToQueue(source, title)` | Adds media to the end of the queue |
+| `AddToQueue(source, title)` / `InsertAt(index, source, title)` | Adds media to the queue |
+| `RemoveAt(index)` / `MoveItem(from, to)` | Edits the queue |
 | `AddSubtitle(source, language, label)` | Adds a subtitle file to the most recently added media |
 | `ClipMedia(startMs, endMs)` | Plays only part of the most recently added media |
 | `SetDrm(scheme, licenseUrl, headers)` | Plays the most recently added media with Widevine, ClearKey or PlayReady DRM |
@@ -49,7 +50,7 @@ as real AARs with their resources.
 | `Next()` / `Previous()` / `PlayAt(index)` / `SeekToItem(index, positionMs)` / `ClearQueue()` | Queue control |
 | `EnterFullscreen()` / `ExitFullscreen()` | Fullscreen control |
 
-Events: `PlaybackStateChanged`, `IsPlayingChanged`, `MediaChanged`,
+Events: `PlaybackStateChanged`, `IsPlayingChanged`, `MediaChanged`, `QueueChanged`,
 `FullscreenChanged`, `PlayerError`. An index outside the queue raises `Screen.ErrorOccurred`
 with error number 30101.
 
@@ -59,10 +60,10 @@ Properties, grouped in the designer:
   `FullscreenOrientation` (Auto, Landscape, Portrait, Sensor)
 - Behavior: `SeekIncrement`, `ControlsTimeout`, `GesturesEnabled`, `RepeatMode`
   (Off, One, All), `Shuffle`, `Autoplay`, `Volume`, `Muted`, `Pitch`, `SkipSilence`,
-  `SeekMode` (Exact, Closest keyframe), `PlaybackSpeed`
+  `SeekMode` (Exact, Closest keyframe), `PlaybackSpeed`, `AutoAdvance`, `UpNextCountdown`
 - Advanced: `UserAgent`, `TargetLiveOffset`
 - Read-only: `IsPlaying`, `IsFullscreen`, `IsLive`, `LiveOffset`, `Position`, `Duration`,
-  `Title`, `Artist`
+  `Title`, `Artist`, `Queue`, `QueueLength`, `CurrentIndex`, `HasNext`, `HasPrevious`
 
 ## Testing
 

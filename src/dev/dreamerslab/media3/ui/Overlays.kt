@@ -133,17 +133,17 @@ internal class EndedOverlay(
         onSizeClass(false)
     }
 
-    fun show(next: String?) {
+    fun show(next: String?, countdownSeconds: Int) {
         this.next = next
         visibility = VISIBLE
-        if (next == null) {
+        if (next == null || countdownSeconds <= 0) {
             showFinished()
             return
         }
         nextTitle.text = next
         upNext.visibility = VISIBLE
         finished.visibility = GONE
-        countdown.start(5, onTick = { caption.text = "UP NEXT IN $it" }, onFinished = ::playNext)
+        countdown.start(countdownSeconds, onTick = { caption.text = "UP NEXT IN $it" }, onFinished = ::playNext)
     }
 
     override fun onSizeClass(fullscreen: Boolean) {

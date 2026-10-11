@@ -71,7 +71,19 @@ internal class TrackSettings(private val player: ExoPlayer) : TrackChoices {
         get() = player.repeatMode
         set(value) {
             player.repeatMode = value
-            player.pauseAtEndOfMediaItems = value != Player.REPEAT_MODE_ONE
+            updatePauseAtEnd()
+        }
+
+    override var autoAdvance = true
+        set(value) {
+            field = value
+            updatePauseAtEnd()
+        }
+
+    override var upNextSeconds = 5
+        set(value) {
+            field = value
+            updatePauseAtEnd()
         }
 
     override var loop: Boolean
@@ -79,6 +91,11 @@ internal class TrackSettings(private val player: ExoPlayer) : TrackChoices {
         set(value) {
             repeatMode = if (value) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
         }
+
+    private fun updatePauseAtEnd() {
+        val playsOnWithoutPause = repeatMode == Player.REPEAT_MODE_ONE || (autoAdvance && upNextSeconds == 0)
+        player.pauseAtEndOfMediaItems = !playsOnWithoutPause
+    }
 
     private fun tracksOf(type: Int): List<Track> =
         player.currentTracks.groups
