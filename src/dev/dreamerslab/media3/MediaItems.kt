@@ -62,7 +62,7 @@ internal object MediaItems {
             )
             .build()
 
-    private fun resolve(source: String): Uri = when {
+    fun resolve(source: String): Uri = when {
         "://" in source -> Uri.parse(source)
         source.startsWith("/") -> Uri.parse("file://$source")
         else -> Uri.parse("asset:///$source")

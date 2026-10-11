@@ -98,6 +98,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     private var seekBarTrackColor = 0x40FFFFFF
     private var seekBarBufferedColor = 0x73FFFFFF
     private var cornerRadius = 0
+    private var posterImage = ""
     private var showRemainingTime = false
     private var subtitlesShownFor: String? = null
     private var subtitleSize = 100
@@ -447,6 +448,20 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     fun CornerRadius(radius: Int) {
         cornerRadius = radius
         ui?.cornerRadius = cornerRadiusPx()
+    }
+
+    @SimpleProperty(
+        description = "Image shown before the video starts, and for audio without its own artwork. A URL or " +
+            "asset name.",
+        category = PropertyCategory.APPEARANCE
+    )
+    fun PosterImage(): String = posterImage
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_STRING, defaultValue = "")
+    @SimpleProperty
+    fun PosterImage(image: String) {
+        posterImage = image
+        ui?.posterUri = posterUri()
     }
 
     @SimpleProperty(
@@ -962,6 +977,8 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         player.release()
     }
 
+    private fun posterUri() = posterImage.ifBlank { null }?.let(MediaItems::resolve)
+
     private fun cornerRadiusPx() = cornerRadius * activity.resources.displayMetrics.density
 
     private fun enableGesture(gesture: Gesture, enabled: Boolean) {
@@ -1099,6 +1116,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
             seekBarBufferedColor = this@Media3Player.seekBarBufferedColor
             cornerRadius = cornerRadiusPx()
             showRemainingTime = this@Media3Player.showRemainingTime
+            posterUri = posterUri()
             controlsEnabled = showControls
             keepScreenOnWhilePlaying = this@Media3Player.keepScreenOn
             subtitleScale = subtitleSize / 100f

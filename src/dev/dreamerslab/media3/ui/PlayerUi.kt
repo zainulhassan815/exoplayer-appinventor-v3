@@ -7,6 +7,7 @@ import android.content.pm.ActivityInfo
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Outline
+import android.net.Uri
 import android.media.AudioManager
 import android.provider.Settings
 import android.text.SpannableStringBuilder
@@ -21,6 +22,7 @@ import android.view.View
 import android.view.ViewOutlineProvider
 import android.view.WindowManager
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import androidx.media3.common.C
@@ -31,6 +33,8 @@ import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.common.Tracks
+import androidx.core.content.ContextCompat
+import androidx.media3.datasource.DataSourceBitmapLoader
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.ui.AspectRatioFrameLayout
@@ -140,6 +144,12 @@ internal class PlayerUi(
 
     var showRemainingTime = false
 
+    var posterUri: Uri? = null
+        set(value) {
+            field = value
+            loadArtwork()
+        }
+
     var seekBarTrackColor: Int
         get() = timeBar.trackColor
         set(value) {
@@ -185,6 +195,15 @@ internal class PlayerUi(
         setKeepContentOnPlayerReset(true)
         setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
     }
+
+    private val artwork = ImageView(activity).apply {
+        scaleType = ImageView.ScaleType.FIT_CENTER
+        visibility = GONE
+    }
+    private val bitmaps = DataSourceBitmapLoader.Builder(activity).build()
+    private var artworkRequest = 0
+    private var startedPlaying = false
+    private var audioOnly = false
 
     private val collapse = IconButton(activity, Icon.COLLAPSE, "Exit fullscreen").apply { setOnClickListener { exitFullscreen() } }
     private val title = activity.text(16f, medium = true).apply {
@@ -417,6 +436,7 @@ internal class PlayerUi(
         setBackgroundColor(Color.BLACK)
         playerView.subtitleView?.setStyle(captionStyle)
         addView(playerView, frame(MATCH, MATCH))
+        addView(artwork, frame(MATCH, MATCH))
         addView(rewindIndicator, frame(0, MATCH, Gravity.START))
         addView(forwardIndicator, frame(0, MATCH, Gravity.END))
         addView(controls, frame(MATCH, MATCH))
@@ -475,6 +495,7 @@ internal class PlayerUi(
         removeCallbacks(hideControls)
         removeCallbacks(hideUnlock)
         removeCallbacks(hideZoomBadge)
+        artworkRequest++
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -511,6 +532,10 @@ internal class PlayerUi(
         playPause.icon = if (isPlaying) Icon.PAUSE else Icon.PLAY
         playPause.contentDescription = if (isPlaying) "Pause" else "Play"
         keepScreenOn = keepScreenOnWhilePlaying && isPlaying
+        if (isPlaying && !startedPlaying) {
+            startedPlaying = true
+            updateArtworkVisibility()
+        }
         if (isPlaying) {
             endedOverlay.hide()
             errorOverlay.hide()
@@ -537,6 +562,8 @@ internal class PlayerUi(
     }
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+        startedPlaying = player.isPlaying
+        loadArtwork()
         errorOverlay.hide()
         endedOverlay.hide()
         updateQueueButtons()
@@ -546,6 +573,7 @@ internal class PlayerUi(
 
     override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
         title.text = mediaMetadata.title ?: ""
+        loadArtwork()
     }
 
     override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
@@ -553,8 +581,32 @@ internal class PlayerUi(
     }
 
     override fun onTracksChanged(tracks: Tracks) {
+        audioOnly = !tracks.isEmpty && !tracks.isTypeSupported(C.TRACK_TYPE_VIDEO)
+        updateArtworkVisibility()
         subtitlesButton.tint = if (subtitlesEnabled && hasSubtitles) accent else controlColor
         subtitlesButton.alpha = if (hasSubtitles) 1f else 0.5f
+    }
+
+    private fun loadArtwork() {
+        val request = ++artworkRequest
+        val metadata = player.mediaMetadata
+        val bitmap = metadata.artworkData?.let(bitmaps::decodeBitmap)
+            ?: (metadata.artworkUri ?: posterUri)?.let(bitmaps::loadBitmap)
+        if (bitmap == null) {
+            artwork.setImageDrawable(null)
+            updateArtworkVisibility()
+            return
+        }
+        bitmap.addListener({
+            if (request != artworkRequest) return@addListener
+            artwork.setImageBitmap(runCatching { bitmap.get() }.getOrNull())
+            updateArtworkVisibility()
+        }, ContextCompat.getMainExecutor(activity))
+    }
+
+    private fun updateArtworkVisibility() {
+        val show = artwork.drawable != null && (!startedPlaying || audioOnly)
+        artwork.visibility = if (show) VISIBLE else GONE
     }
 
     private val overlayShowing: Boolean get() = errorOverlay.isShowing || endedOverlay.isShowing
