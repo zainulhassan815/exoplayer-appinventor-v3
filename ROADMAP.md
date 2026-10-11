@@ -86,7 +86,7 @@ Planned improvements to Media3Player, worked through in order. Items marked
 ## 11. Advanced
 
 - [x] Capture the current frame to an image file
-- [ ] Several players on one screen (verify)
+- [x] Several players on one screen: independent with `AudioFocus` off; muted players skip audio focus
 - [x] Thumbnail previews while scrubbing (sprite sheet grids and WebVTT thumbnail tracks)
 
 ## Not possible in App Inventor

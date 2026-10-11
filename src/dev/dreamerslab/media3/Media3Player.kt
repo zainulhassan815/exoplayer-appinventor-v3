@@ -121,6 +121,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     private var autoplay = true
     private var volume = 100
     private var muted = false
+    private var audioFocus = true
     private var userAgent = ""
     private var targetLiveOffset = 0L
     private val headers = mutableMapOf<String, String>()
@@ -804,6 +805,21 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     fun Volume(volume: Int) {
         this.volume = volume.coerceIn(0, 100)
         applyVolume()
+    }
+
+    @SimpleProperty(
+        description = "Pauses this player when other audio starts, like a call, another app or another player in " +
+            "this app, as media players should. Turn off to play independently, for example several players at " +
+            "once. Muted players never take part.",
+        category = PropertyCategory.BEHAVIOR
+    )
+    fun AudioFocus(): Boolean = audioFocus
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "True")
+    @SimpleProperty
+    fun AudioFocus(enabled: Boolean) {
+        audioFocus = enabled
+        applyAudioFocus()
     }
 
     @SimpleProperty(description = "Silences the player without changing its volume.", category = PropertyCategory.BEHAVIOR)
@@ -1567,6 +1583,12 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
 
     private fun applyVolume() {
         player.volume = if (muted) 0f else volume / 100f
+        applyAudioFocus()
+    }
+
+    private fun applyAudioFocus() {
+        val silent = muted || volume == 0
+        player.setAudioAttributes(AudioAttributes.DEFAULT, audioFocus && !silent)
     }
 
     private companion object {

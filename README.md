@@ -80,7 +80,7 @@ Properties, grouped in the designer:
   `FullscreenOrientation` (Auto, Landscape, Portrait, Sensor), `SubtitleSize`,
   `SubtitleTextColor`, `SubtitleBackgroundColor`, `SubtitleEdge`, `SubtitleBottomMargin`
 - Behavior: `SeekIncrement`, `ControlsTimeout`, `DoubleTapToSeek`, `HoldForSpeed`,
-  `SwipeForBrightness`, `SwipeForVolume`, `PinchToZoom`, `KeepScreenOn`, `BackgroundPlayback`,
+  `SwipeForBrightness`, `SwipeForVolume`, `PinchToZoom`, `KeepScreenOn`, `BackgroundPlayback`, `AudioFocus`,
   `PositionUpdateInterval`, `PreloadNext`, `EqualizerEnabled`, `BassBoost`, `LoudnessBoost`, `Mono`,
   `Balance`, `RepeatMode`
   (Off, One, All), `Shuffle`, `Autoplay`, `Volume`, `Muted`, `Pitch`, `SkipSilence`,
@@ -93,6 +93,12 @@ Properties, grouped in the designer:
   `BufferedPercentage`, `VideoWidth`, `VideoHeight`, `VideoBitrate`, `DroppedFrames`,
   `BandwidthEstimate`, `EqualizerPresets`, `EqualizerPreset`, `EqualizerBands`,
   `EqualizerMinLevel`, `EqualizerMaxLevel`, `CacheUsed`, `Downloads`
+
+### Several players
+
+Players pause when other audio starts, including another player in the app, as Android
+media players should, so starting one pauses the others. Turn `AudioFocus` off on players
+that should play on their own. Muted players never pause others or get paused.
 
 ## Testing
 
