@@ -5,6 +5,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
+import java.util.UUID
 
 internal object MediaItems {
 
@@ -31,6 +32,29 @@ internal object MediaItems {
                 MediaItem.ClippingConfiguration.Builder()
                     .setStartPositionMs(startMs.coerceAtLeast(0))
                     .setEndPositionMs(if (endMs > 0) endMs else C.TIME_END_OF_SOURCE)
+                    .build()
+            )
+            .build()
+
+    fun withDrm(item: MediaItem, scheme: UUID, licenseUrl: String, headers: Map<String, String>): MediaItem =
+        item.buildUpon()
+            .setDrmConfiguration(
+                MediaItem.DrmConfiguration.Builder(scheme)
+                    .setLicenseUri(licenseUrl.ifBlank { null })
+                    .setLicenseRequestHeaders(headers)
+                    .build()
+            )
+            .build()
+
+    fun withMimeType(item: MediaItem, mimeType: String?): MediaItem = item.buildUpon().setMimeType(mimeType).build()
+
+    fun withMetadata(item: MediaItem, artist: String, description: String, artworkUrl: String): MediaItem =
+        item.buildUpon()
+            .setMediaMetadata(
+                item.mediaMetadata.buildUpon()
+                    .setArtist(artist.ifBlank { null })
+                    .setDescription(description.ifBlank { null })
+                    .setArtworkUri(artworkUrl.ifBlank { null }?.let(::resolve))
                     .build()
             )
             .build()

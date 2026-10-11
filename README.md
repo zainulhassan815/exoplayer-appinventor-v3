@@ -16,7 +16,9 @@ as real AARs with their resources.
 - Fullscreen with landscape or portrait orientation, matching the video
 - Settings sheet: quality, playback speed, subtitles, audio track, zoom and loop
 - Queue with an up next countdown, replay, error and retry states, and a controls lock
-- MP4, HLS and DASH; side-loaded WebVTT, SRT, TTML and SSA subtitles
+- MP4, HLS, DASH, SmoothStreaming and RTSP, live streams with a LIVE indicator, DRM
+  (Widevine, ClearKey, PlayReady), custom HTTP headers; side-loaded WebVTT, SRT, TTML
+  and SSA subtitles
 - Accent color, resize mode, fullscreen orientation, repeat mode and behavior
   configurable from the designer
 
@@ -37,6 +39,11 @@ as real AARs with their resources.
 | `AddToQueue(source, title)` | Adds media to the end of the queue |
 | `AddSubtitle(source, language, label)` | Adds a subtitle file to the most recently added media |
 | `ClipMedia(startMs, endMs)` | Plays only part of the most recently added media |
+| `SetDrm(scheme, licenseUrl, headers)` | Plays the most recently added media with Widevine, ClearKey or PlayReady DRM |
+| `SetMediaType(type)` | Sets the format (HLS, DASH, SmoothStreaming, RTSP, Progressive) of the most recently added media |
+| `SetMetadata(artist, description, artworkUrl)` | Sets details of the most recently added media |
+| `SetHeader(name, value)` / `ClearHeaders()` | HTTP headers sent with every media request |
+| `SeekToLiveEdge()` | Jumps to the live edge of a live stream |
 | `AddChapter(startSeconds, title)` / `ClearChapters()` | Chapters shown while scrubbing |
 | `Resume()` / `Pause()` / `Stop()` / `Replay()` / `SeekTo(positionMs)` | Playback control |
 | `Next()` / `Previous()` / `PlayAt(index)` / `SeekToItem(index, positionMs)` / `ClearQueue()` | Queue control |
@@ -53,7 +60,9 @@ Properties, grouped in the designer:
 - Behavior: `SeekIncrement`, `ControlsTimeout`, `GesturesEnabled`, `RepeatMode`
   (Off, One, All), `Shuffle`, `Autoplay`, `Volume`, `Muted`, `Pitch`, `SkipSilence`,
   `SeekMode` (Exact, Closest keyframe), `PlaybackSpeed`
-- Read-only: `IsPlaying`, `IsFullscreen`, `Position`, `Duration`, `Title`
+- Advanced: `UserAgent`, `TargetLiveOffset`
+- Read-only: `IsPlaying`, `IsFullscreen`, `IsLive`, `LiveOffset`, `Position`, `Duration`,
+  `Title`, `Artist`
 
 ## Testing
 

@@ -24,12 +24,12 @@ Planned improvements to Media3Player, worked through in order. Items marked
 
 ## 3. Media sources and formats
 
-- [ ] Custom HTTP headers and user agent
-- [ ] DRM (Widevine) with license URL and headers
-- [ ] Live streams: jump to live edge, target live offset, DVR seeking, `IsLive`
-- [ ] RTSP **+dep** and SmoothStreaming **+dep**
-- [ ] MIME type hint for URLs without an extension; local files and content URIs
-- [ ] Per-item metadata: artist, description, artwork URL
+- [x] Custom HTTP headers and user agent
+- [x] DRM (Widevine) with license URL and headers
+- [x] Live streams: jump to live edge, target live offset, DVR seeking, `IsLive`
+- [x] RTSP **+dep** and SmoothStreaming **+dep**
+- [x] MIME type hint for URLs without an extension; local files and content URIs
+- [x] Per-item metadata: artist, description, artwork URL
 
 ## 4. Queue and playlist
 

@@ -8,10 +8,14 @@ import android.view.ViewGroup
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
 import com.google.appinventor.components.annotations.DesignerProperty
 import com.google.appinventor.components.annotations.Extension
@@ -28,7 +32,10 @@ import com.google.appinventor.components.runtime.HVArrangement
 import com.google.appinventor.components.runtime.OnDestroyListener
 import com.google.appinventor.components.runtime.OnPauseListener
 import com.google.appinventor.components.runtime.OnResumeListener
+import com.google.appinventor.components.runtime.util.YailDictionary
+import dev.dreamerslab.media3.helpers.DrmScheme
 import dev.dreamerslab.media3.helpers.FullscreenOrientation
+import dev.dreamerslab.media3.helpers.MediaType
 import dev.dreamerslab.media3.helpers.RepeatMode
 import dev.dreamerslab.media3.helpers.ResizeMode
 import dev.dreamerslab.media3.helpers.SeekMode
@@ -45,7 +52,10 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     OnPauseListener, OnResumeListener, OnDestroyListener, Player.Listener {
 
     private val activity: Activity = container.`$context`()
+    private val http = DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true)
+    private val mediaSources = DefaultMediaSourceFactory(DefaultDataSource.Factory(activity, http))
     private val player = ExoPlayer.Builder(activity)
+        .setMediaSourceFactory(mediaSources)
         .setAudioAttributes(AudioAttributes.DEFAULT, true)
         .setHandleAudioBecomingNoisy(true)
         .build()
@@ -64,6 +74,10 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     private var autoplay = true
     private var volume = 100
     private var muted = false
+    private var userAgent = ""
+    private var targetLiveOffset = 0L
+    private val headers = mutableMapOf<String, String>()
+    private var updatingQueue = false
 
     init {
         player.pauseAtEndOfMediaItems = true
@@ -113,23 +127,55 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         description = "Adds a subtitle file (WebVTT, SRT, TTML or SSA) to the most recently added media. " +
             "Language is a code like \"en\"; label is the name shown in the subtitles menu."
     )
-    fun AddSubtitle(source: String, language: String, label: String) {
-        val index = player.mediaItemCount - 1
-        if (index < 0) return
-        player.replaceMediaItem(index, MediaItems.withSubtitle(player.getMediaItemAt(index), source, language, label))
-    }
+    fun AddSubtitle(source: String, language: String, label: String) =
+        updateLastAdded { MediaItems.withSubtitle(it, source, language, label) }
 
     @SimpleFunction(
         description = "Plays only part of the most recently added media, from the start to the end position in " +
             "milliseconds. An end of 0 plays until the end of the media."
     )
-    fun ClipMedia(startMs: Long, endMs: Long) {
-        val index = player.mediaItemCount - 1
-        if (index < 0) return
-        player.addMediaItem(MediaItems.clipped(player.getMediaItemAt(index), startMs, endMs))
-        if (index == player.currentMediaItemIndex) player.seekToDefaultPosition(index + 1)
-        player.removeMediaItem(index)
+    fun ClipMedia(startMs: Long, endMs: Long) = updateLastAdded { MediaItems.clipped(it, startMs, endMs) }
+
+    @SimpleFunction(
+        description = "Plays the most recently added media with DRM. Headers is a dictionary of HTTP headers sent " +
+            "with license requests; pass an empty dictionary if the license server needs none."
+    )
+    fun SetDrm(@Options(DrmScheme::class) scheme: String, licenseUrl: String, headers: YailDictionary) {
+        val uuid = DRM_SCHEMES.getValue(DrmScheme.fromUnderlyingValue(scheme) ?: return)
+        val requestHeaders = headers.entries.associate { (name, value) -> name.toString() to value.toString() }
+        updateLastAdded { MediaItems.withDrm(it, uuid, licenseUrl, requestHeaders) }
     }
+
+    @SimpleFunction(
+        description = "Sets the format of the most recently added media, for URLs that don't end in a known " +
+            "extension."
+    )
+    fun SetMediaType(@Options(MediaType::class) type: String) {
+        val mediaType = MediaType.fromUnderlyingValue(type) ?: return
+        updateLastAdded { MediaItems.withMimeType(it, MIME_TYPES[mediaType]) }
+    }
+
+    @SimpleFunction(
+        description = "Sets the artist, description and artwork of the most recently added media. Artwork is a " +
+            "URL or asset name."
+    )
+    fun SetMetadata(artist: String, description: String, artworkUrl: String) =
+        updateLastAdded { MediaItems.withMetadata(it, artist, description, artworkUrl) }
+
+    @SimpleFunction(description = "Sends the given HTTP header with every media request.")
+    fun SetHeader(name: String, value: String) {
+        headers[name] = value
+        http.setDefaultRequestProperties(headers)
+    }
+
+    @SimpleFunction(description = "Stops sending the headers set with SetHeader.")
+    fun ClearHeaders() {
+        headers.clear()
+        http.setDefaultRequestProperties(headers)
+    }
+
+    @SimpleFunction(description = "Jumps to the live edge of a live stream.")
+    fun SeekToLiveEdge() = player.seekToDefaultPosition()
 
     @SimpleFunction(description = "Resumes playback.")
     fun Resume() {
@@ -362,6 +408,42 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         tracks.speed = speed.coerceIn(0.25f, 2f)
     }
 
+    @SimpleProperty(
+        description = "User agent sent with media requests. Leave empty for the default.",
+        category = PropertyCategory.ADVANCED
+    )
+    fun UserAgent(): String = userAgent
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_STRING, defaultValue = "")
+    @SimpleProperty
+    fun UserAgent(userAgent: String) {
+        this.userAgent = userAgent
+        http.setUserAgent(userAgent.ifBlank { null })
+    }
+
+    @SimpleProperty(
+        description = "How far behind the live edge live streams play, in milliseconds. 0 uses the stream's own " +
+            "setting. Applies to media added afterwards.",
+        category = PropertyCategory.ADVANCED
+    )
+    fun TargetLiveOffset(): Long = targetLiveOffset
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_NON_NEGATIVE_INTEGER, defaultValue = "0")
+    @SimpleProperty
+    fun TargetLiveOffset(milliseconds: Long) {
+        targetLiveOffset = milliseconds.coerceAtLeast(0)
+        mediaSources.setLiveTargetOffsetMs(if (targetLiveOffset > 0) targetLiveOffset else C.TIME_UNSET)
+    }
+
+    @SimpleProperty(description = "Whether the current media is a live stream.")
+    fun IsLive(): Boolean = player.isCurrentMediaItemLive
+
+    @SimpleProperty(description = "How far behind the live edge the live stream plays, in milliseconds, or 0.")
+    fun LiveOffset(): Long = player.currentLiveOffset.takeIf { it != C.TIME_UNSET } ?: 0
+
+    @SimpleProperty(description = "Artist of the current media.")
+    fun Artist(): String = player.mediaMetadata.artist?.toString() ?: ""
+
     @SimpleProperty(description = "Whether media is playing.")
     fun IsPlaying(): Boolean = player.isPlaying
 
@@ -418,7 +500,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     override fun onPlayerError(error: PlaybackException) = PlayerError(error.message ?: error.errorCodeName)
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-        if (mediaItem != null) MediaChanged(player.currentMediaItemIndex + 1, mediaItem.mediaMetadata.title?.toString() ?: "")
+        if (mediaItem != null && !updatingQueue) MediaChanged(player.currentMediaItemIndex + 1, mediaItem.mediaMetadata.title?.toString() ?: "")
     }
 
     override fun onPause() {
@@ -433,6 +515,16 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     override fun onDestroy() {
         ui?.release()
         player.release()
+    }
+
+    private fun updateLastAdded(update: (MediaItem) -> MediaItem) {
+        val index = player.mediaItemCount - 1
+        if (index < 0) return
+        updatingQueue = true
+        player.addMediaItem(update(player.getMediaItemAt(index)))
+        if (index == player.currentMediaItemIndex) player.seekTo(index + 1, player.currentPosition)
+        player.removeMediaItem(index)
+        updatingQueue = false
     }
 
     private fun seekToItem(function: String, index: Int, positionMs: Long) {
@@ -469,6 +561,19 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         val SEEK_MODES = mapOf(
             SeekMode.Exact to SeekParameters.EXACT,
             SeekMode.ClosestKeyframe to SeekParameters.CLOSEST_SYNC,
+        )
+        val DRM_SCHEMES = mapOf(
+            DrmScheme.Widevine to C.WIDEVINE_UUID,
+            DrmScheme.ClearKey to C.CLEARKEY_UUID,
+            DrmScheme.PlayReady to C.PLAYREADY_UUID,
+        )
+        val MIME_TYPES = mapOf(
+            MediaType.Auto to null,
+            MediaType.Hls to MimeTypes.APPLICATION_M3U8,
+            MediaType.Dash to MimeTypes.APPLICATION_MPD,
+            MediaType.SmoothStreaming to MimeTypes.APPLICATION_SS,
+            MediaType.Rtsp to MimeTypes.APPLICATION_RTSP,
+            MediaType.Progressive to MimeTypes.VIDEO_UNKNOWN,
         )
         val ORIENTATIONS = mapOf(
             FullscreenOrientation.Auto to null,

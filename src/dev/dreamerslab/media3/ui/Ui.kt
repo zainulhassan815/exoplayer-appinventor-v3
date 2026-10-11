@@ -25,6 +25,7 @@ internal const val TEXT_SECONDARY = 0xB3FFFFFF.toInt()
 internal const val SCRIM_DARK = 0xC708080C.toInt()
 internal const val SURFACE = 0xFF1B1B24.toInt()
 internal const val ERROR = 0xFFFF6B6B.toInt()
+internal const val LIVE_RED = 0xFFFF3B30.toInt()
 internal const val DEFAULT_ACCENT = 0xFF7C5CFF.toInt()
 
 internal val MEDIUM: Typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)

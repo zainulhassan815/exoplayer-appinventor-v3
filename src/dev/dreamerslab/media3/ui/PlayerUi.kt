@@ -39,6 +39,8 @@ import kotlin.math.roundToInt
 
 internal class Chapter(val startMs: Long, val title: String)
 
+private const val LIVE_EDGE_TOLERANCE_MS = 5_000L
+
 @SuppressLint("ViewConstructor")
 internal class PlayerUi(
     private val activity: Activity,
@@ -133,7 +135,9 @@ internal class PlayerUi(
         addView(next)
     }
 
-    private val time = activity.text(12f)
+    private val time = activity.text(12f).apply {
+        setOnClickListener { if (player.isCurrentMediaItemLive) player.seekToDefaultPosition() }
+    }
     private val speedChip = SpeedChip(activity).apply { setOnClickListener { openSettings(SettingsSheet.Page.SPEED) } }
     private val fullscreenButton = IconButton(activity, Icon.FULLSCREEN, "Fullscreen").apply {
         setOnClickListener { if (isFullscreen) exitFullscreen() else enterFullscreen() }
@@ -450,10 +454,24 @@ internal class PlayerUi(
     private fun updateProgress() {
         val duration = player.duration.takeIf { it != C.TIME_UNSET } ?: 0L
         timeBar.update(player.currentPosition, player.bufferedPosition, duration)
-        time.text = SpannableStringBuilder(formatTime(player.currentPosition)).apply {
+        time.text = if (player.isCurrentMediaItemLive) liveTime() else SpannableStringBuilder(formatTime(player.currentPosition)).apply {
             val start = length
             append(" / ").append(formatTime(duration))
             setSpan(ForegroundColorSpan(TEXT_SECONDARY), start, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+    }
+
+    private fun liveTime(): CharSequence {
+        val window = player.currentTimeline.getWindow(player.currentMediaItemIndex, Timeline.Window())
+        val behindMs = window.defaultPositionMs - player.currentPosition
+        val atLiveEdge = behindMs < LIVE_EDGE_TOLERANCE_MS
+        return SpannableStringBuilder("● LIVE").apply {
+            setSpan(ForegroundColorSpan(if (atLiveEdge) LIVE_RED else TEXT_SECONDARY), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            if (!atLiveEdge) {
+                val start = length
+                append("  -").append(formatTime(behindMs))
+                setSpan(ForegroundColorSpan(TEXT_SECONDARY), start, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
         }
     }
 
