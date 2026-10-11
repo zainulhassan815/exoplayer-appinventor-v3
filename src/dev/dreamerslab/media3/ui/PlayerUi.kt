@@ -55,6 +55,7 @@ internal enum class Gesture { DOUBLE_TAP_SEEK, HOLD_FOR_SPEED, SWIPE_BRIGHTNESS,
 internal enum class Control { PREVIOUS_NEXT, SEEK_BUTTONS, SPEED, SUBTITLES, SETTINGS, FULLSCREEN, LOCK, TITLE, TIME_BAR }
 
 private const val LIVE_EDGE_TOLERANCE_MS = 5_000L
+private const val THUMBNAIL_WIDTH_DP = 160
 
 @SuppressLint("ViewConstructor")
 internal class PlayerUi(
@@ -210,6 +211,8 @@ internal class PlayerUi(
     }
     private val bitmaps = DataSourceBitmapLoader.Builder(activity).build()
     private var artworkRequest = 0
+    private var thumbnailRequest = 0
+    private var thumbnails: Pair<ThumbnailSprite, Bitmap>? = null
     private var startedPlaying = false
     private var audioOnly = false
 
@@ -268,11 +271,18 @@ internal class PlayerUi(
 
     private val scrubTime = activity.text(12f, medium = true)
     private val scrubChapter = activity.text(11f, TEXT_SECONDARY)
+    private val scrubThumbnail = ImageView(activity).apply {
+        scaleType = ImageView.ScaleType.FIT_CENTER
+        adjustViewBounds = true
+        maxWidth = dp(THUMBNAIL_WIDTH_DP)
+        visibility = GONE
+    }
     private val scrubPreview = LinearLayout(activity).apply {
         orientation = LinearLayout.VERTICAL
         gravity = Gravity.CENTER_HORIZONTAL
         setPadding(dp(10), dp(6), dp(10), dp(6))
         background = rounded(0xB3000000.toInt(), dp(8).toFloat())
+        addView(scrubThumbnail, linear(dp(THUMBNAIL_WIDTH_DP), WRAP).margins(bottom = dp(4)))
         addView(scrubChapter)
         addView(scrubTime, linear(WRAP, WRAP).margins(top = dp(2)))
         visibility = INVISIBLE
@@ -353,6 +363,7 @@ internal class PlayerUi(
         override fun onScrubMove(positionMs: Long) {
             player.seekTo(positionMs)
             scrubTime.text = formatTime(positionMs)
+            showThumbnail(positionMs)
             val chapter = chapters.lastOrNull { it.startMs <= positionMs }
             scrubChapter.text = chapter?.title ?: ""
             scrubChapter.visibility = if (chapter == null) GONE else VISIBLE
@@ -602,6 +613,7 @@ internal class PlayerUi(
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
         startedPlaying = player.isPlaying
         loadArtwork()
+        loadThumbnails()
         errorOverlay.hide()
         endedOverlay.hide()
         updateQueueButtons()
@@ -640,6 +652,24 @@ internal class PlayerUi(
             artwork.setImageBitmap(runCatching { bitmap.get() }.getOrNull())
             updateArtworkVisibility()
         }, ContextCompat.getMainExecutor(activity))
+    }
+
+    private fun loadThumbnails() {
+        val request = ++thumbnailRequest
+        thumbnails = null
+        scrubThumbnail.visibility = GONE
+        val sprite = ThumbnailSprite.from(player.currentMediaItem?.mediaMetadata?.extras) ?: return
+        val sheet = bitmaps.loadBitmap(sprite.uri)
+        sheet.addListener({
+            if (request != thumbnailRequest) return@addListener
+            thumbnails = runCatching { sheet.get() }.getOrNull()?.let { sprite to it }
+        }, ContextCompat.getMainExecutor(activity))
+    }
+
+    private fun showThumbnail(positionMs: Long) {
+        val (sprite, sheet) = thumbnails ?: return
+        scrubThumbnail.setImageBitmap(sprite.tile(sheet, positionMs))
+        scrubThumbnail.visibility = VISIBLE
     }
 
     private fun updateArtworkVisibility() {

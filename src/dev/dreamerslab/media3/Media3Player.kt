@@ -78,6 +78,7 @@ import dev.dreamerslab.media3.ui.Control
 import dev.dreamerslab.media3.ui.DEFAULT_ACCENT
 import dev.dreamerslab.media3.ui.Gesture
 import dev.dreamerslab.media3.ui.PlayerUi
+import dev.dreamerslab.media3.ui.ThumbnailSprite
 import java.io.File
 
 @Extension(
@@ -273,6 +274,20 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     )
     fun SetMetadata(artist: String, description: String, artworkUrl: String) =
         updateLastAdded { MediaItems.withMetadata(it, artist, description, artworkUrl) }
+
+    @SimpleFunction(
+        description = "Shows thumbnails while scrubbing the most recently added media. The sprite is one image (URL " +
+            "or asset) with the given columns and rows of equally sized thumbnails, one every intervalSeconds, " +
+            "left to right and top to bottom."
+    )
+    fun SetThumbnails(spriteUrl: String, columns: Int, rows: Int, intervalSeconds: Double) {
+        if (columns < 1 || rows < 1 || intervalSeconds <= 0) {
+            reportError("SetThumbnails", ERROR_THUMBNAILS, "Columns and rows must be at least 1, and the interval more than 0.")
+            return
+        }
+        val sprite = ThumbnailSprite(MediaItems.resolve(spriteUrl), columns, rows, (intervalSeconds * 1000).toLong())
+        updateLastAdded { MediaItems.withThumbnails(it, sprite) }
+    }
 
     @SimpleFunction(description = "Sends the given HTTP header with every media request.")
     fun SetHeader(name: String, value: String) {
@@ -1550,6 +1565,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         const val ERROR_NOT_IN_QUEUE = 30101
         const val ERROR_NOT_IN_LIST = 30102
         const val ERROR_CAPTURE = 30103
+        const val ERROR_THUMBNAILS = 30104
         val CAPTION_EDGES = mapOf(
             SubtitleEdge.None to CaptionStyleCompat.EDGE_TYPE_NONE,
             SubtitleEdge.Outline to CaptionStyleCompat.EDGE_TYPE_OUTLINE,

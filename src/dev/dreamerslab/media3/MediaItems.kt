@@ -5,6 +5,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
+import dev.dreamerslab.media3.ui.ThumbnailSprite
 import java.util.UUID
 
 internal object MediaItems {
@@ -60,6 +61,11 @@ internal object MediaItems {
                     .setArtworkUri(artworkUrl.ifBlank { null }?.let(::resolve))
                     .build()
             )
+            .build()
+
+    fun withThumbnails(item: MediaItem, sprite: ThumbnailSprite): MediaItem =
+        item.buildUpon()
+            .setMediaMetadata(item.mediaMetadata.buildUpon().setExtras(sprite.toExtras(item.mediaMetadata.extras)).build())
             .build()
 
     fun resolve(source: String): Uri = when {
