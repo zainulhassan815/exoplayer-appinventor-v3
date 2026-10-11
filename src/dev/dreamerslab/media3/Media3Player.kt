@@ -12,15 +12,23 @@ import android.view.ViewGroup
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Metadata
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.common.Tracks
+import androidx.media3.common.VideoSize
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
+import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
+import androidx.media3.extractor.metadata.icy.IcyInfo
+import androidx.media3.extractor.metadata.id3.TextInformationFrame
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaController
 import androidx.media3.session.MediaSession
@@ -95,6 +103,15 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     private val headers = mutableMapOf<String, String>()
     private var updatingQueue = false
     private var lastAddedId = ""
+    private var positionUpdateInterval = 0
+    private var droppedFrames = 0
+    private var isBuffering = false
+    private val positionUpdates = object : Runnable {
+        override fun run() {
+            PositionChanged(player.currentPosition, player.duration.takeIf { it != C.TIME_UNSET } ?: 0)
+            mainThread.postDelayed(this, positionUpdateInterval.toLong())
+        }
+    }
     private var session: MediaSession? = null
     private var controller: ListenableFuture<MediaController>? = null
     private var showSubtitles = false
@@ -119,6 +136,11 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     init {
         player.pauseAtEndOfMediaItems = true
         player.addListener(this)
+        player.addAnalyticsListener(object : AnalyticsListener {
+            override fun onDroppedVideoFrames(eventTime: AnalyticsListener.EventTime, count: Int, elapsedMs: Long) {
+                droppedFrames += count
+            }
+        })
         form.registerForOnPause(this)
         form.registerForOnResume(this)
         form.registerForOnDestroy(this)
@@ -914,6 +936,40 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         tracks.upNextSeconds = seconds.coerceAtLeast(0)
     }
 
+    @SimpleProperty(
+        description = "Milliseconds between PositionChanged events while media plays. 0 sends none.",
+        category = PropertyCategory.BEHAVIOR
+    )
+    fun PositionUpdateInterval(): Int = positionUpdateInterval
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_NON_NEGATIVE_INTEGER, defaultValue = "0")
+    @SimpleProperty
+    fun PositionUpdateInterval(milliseconds: Int) {
+        positionUpdateInterval = milliseconds.coerceAtLeast(0)
+        onIsPlayingChanged(player.isPlaying)
+    }
+
+    @SimpleProperty(description = "Position up to which media has loaded, in milliseconds.")
+    fun BufferedPosition(): Long = player.bufferedPosition
+
+    @SimpleProperty(description = "How much of the current media has loaded, from 0 to 100.")
+    fun BufferedPercentage(): Int = player.bufferedPercentage
+
+    @SimpleProperty(description = "Bitrate of the playing video in kilobits per second, or 0 if unknown.")
+    fun VideoBitrate(): Int = player.videoFormat?.bitrate?.takeIf { it > 0 }?.div(1000) ?: 0
+
+    @SimpleProperty(description = "Width of the playing video in pixels.")
+    fun VideoWidth(): Int = player.videoSize.width
+
+    @SimpleProperty(description = "Height of the playing video in pixels.")
+    fun VideoHeight(): Int = player.videoSize.height
+
+    @SimpleProperty(description = "Number of video frames dropped because the device couldn't keep up.")
+    fun DroppedFrames(): Int = droppedFrames
+
+    @SimpleProperty(description = "Estimated network speed in kilobits per second, or 0 if unknown.")
+    fun BandwidthEstimate(): Long = DefaultBandwidthMeter.getSingletonInstance(activity).bitrateEstimate / 1000
+
     @SimpleProperty(description = "Artist of the current media.")
     fun Artist(): String = player.mediaMetadata.artist?.toString() ?: ""
 
@@ -946,8 +1002,46 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     }
 
     @SimpleEvent(description = "Playback failed.")
-    fun PlayerError(message: String) {
-        dispatch("PlayerError", message)
+    fun PlayerError(message: String, errorCode: Int, category: String) {
+        dispatch("PlayerError", message, errorCode, category)
+    }
+
+    @SimpleEvent(description = "Sent every PositionUpdateInterval milliseconds while media plays.")
+    fun PositionChanged(positionMs: Long, durationMs: Long) {
+        dispatch("PositionChanged", positionMs, durationMs)
+    }
+
+    @SimpleEvent(description = "The player started or stopped waiting for media to load.")
+    fun BufferingChanged(isBuffering: Boolean) {
+        dispatch("BufferingChanged", isBuffering)
+    }
+
+    @SimpleEvent(description = "The size of the video changed, for example when another quality started playing.")
+    fun VideoSizeChanged(width: Int, height: Int) {
+        dispatch("VideoSizeChanged", width, height)
+    }
+
+    @SimpleEvent(description = "The first frame of the video appeared.")
+    fun FirstFrameRendered() {
+        dispatch("FirstFrameRendered")
+    }
+
+    @SimpleEvent(description = "The playback speed changed.")
+    fun SpeedChanged(speed: Float) {
+        dispatch("SpeedChanged", speed)
+    }
+
+    @SimpleEvent(description = "The title or artist of the current media changed.")
+    fun MetadataChanged(title: String, artist: String) {
+        dispatch("MetadataChanged", title, artist)
+    }
+
+    @SimpleEvent(
+        description = "A stream announced what is playing now, like the song on an internet radio station. Either " +
+            "may be empty; radio stations often send \"Artist - Song\" as the title."
+    )
+    fun StreamTitleChanged(title: String, artist: String) {
+        dispatch("StreamTitleChanged", title, artist)
     }
 
     @SimpleEvent(description = "Another media in the queue started. Index starts at 1.")
@@ -979,6 +1073,11 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     }
 
     override fun onPlaybackStateChanged(playbackState: Int) {
+        val buffering = playbackState == Player.STATE_BUFFERING
+        if (buffering != isBuffering) {
+            isBuffering = buffering
+            BufferingChanged(buffering)
+        }
         PlaybackStateChanged(
             when (playbackState) {
                 Player.STATE_BUFFERING -> "BUFFERING"
@@ -989,9 +1088,40 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         )
     }
 
-    override fun onIsPlayingChanged(isPlaying: Boolean) = IsPlayingChanged(isPlaying)
+    override fun onIsPlayingChanged(isPlaying: Boolean) {
+        mainThread.removeCallbacks(positionUpdates)
+        if (isPlaying && positionUpdateInterval > 0) mainThread.post(positionUpdates)
+        IsPlayingChanged(isPlaying)
+    }
 
-    override fun onPlayerError(error: PlaybackException) = PlayerError(error.message ?: error.errorCodeName)
+    override fun onPlayerError(error: PlaybackException) =
+        PlayerError(error.message ?: error.errorCodeName, error.errorCode, errorCategory(error.errorCode))
+
+    override fun onVideoSizeChanged(videoSize: VideoSize) {
+        if (videoSize.width > 0) VideoSizeChanged(videoSize.width, videoSize.height)
+    }
+
+    override fun onRenderedFirstFrame() = FirstFrameRendered()
+
+    override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) = SpeedChanged(playbackParameters.speed)
+
+    override fun onMetadata(metadata: Metadata) {
+        var title = ""
+        var artist = ""
+        for (index in 0 until metadata.length()) {
+            when (val entry = metadata[index]) {
+                is IcyInfo -> title = entry.title ?: title
+                is TextInformationFrame -> when (entry.id) {
+                    "TIT2" -> title = entry.values.firstOrNull() ?: title
+                    "TPE1" -> artist = entry.values.firstOrNull() ?: artist
+                }
+            }
+        }
+        if (title.isNotEmpty() || artist.isNotEmpty()) StreamTitleChanged(title, artist)
+    }
+
+    override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) =
+        MetadataChanged(mediaMetadata.title?.toString() ?: "", mediaMetadata.artist?.toString() ?: "")
 
     override fun onTracksChanged(changed: Tracks) {
         val mediaId = player.currentMediaItem?.mediaId
@@ -1022,6 +1152,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     }
 
     override fun onDestroy() {
+        mainThread.removeCallbacks(positionUpdates)
         stopSession()
         ui?.release()
         player.release()
@@ -1122,6 +1253,15 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
 
     private fun reportError(function: String, errorNumber: Int, message: String) {
         mainThread.post { form.ErrorOccurred(this, function, errorNumber, message) }
+    }
+
+    private fun errorCategory(code: Int): String = when (code) {
+        PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS, PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND -> "NotFound"
+        in 2000..2999 -> "Network"
+        in 3000..3999 -> "Format"
+        in 4000..4999 -> "Decoder"
+        in 6000..6999 -> "DRM"
+        else -> "Other"
     }
 
     private fun applyVolume() {

@@ -54,8 +54,11 @@ as real AARs with their resources.
 | `ShowAsDialog()` / `CloseDialog()` | Shows the player in a dialog over the screen |
 | `MoveTo(arrangement)` | Moves the player into another arrangement |
 
-Events: `PlaybackStateChanged`, `IsPlayingChanged`, `MediaChanged`, `QueueChanged`, `TracksChanged`,
-`FullscreenChanged`, `DialogClosed`, `PlayerError`. An index outside the queue raises `Screen.ErrorOccurred`
+Events: `PlaybackStateChanged`, `IsPlayingChanged`, `BufferingChanged`, `PositionChanged`,
+`MediaChanged`, `MetadataChanged`, `StreamTitleChanged`, `QueueChanged`, `TracksChanged`,
+`VideoSizeChanged`, `FirstFrameRendered`, `SpeedChanged`, `FullscreenChanged`, `DialogClosed`,
+`PlayerError(message, errorCode, category)` with category Network, NotFound, Format, Decoder,
+DRM or Other. An index outside the queue raises `Screen.ErrorOccurred`
 with error number 30101, and one outside a track list with 30102.
 
 Properties, grouped in the designer:
@@ -69,14 +72,16 @@ Properties, grouped in the designer:
   `SubtitleTextColor`, `SubtitleBackgroundColor`, `SubtitleEdge`, `SubtitleBottomMargin`
 - Behavior: `SeekIncrement`, `ControlsTimeout`, `DoubleTapToSeek`, `HoldForSpeed`,
   `SwipeForBrightness`, `SwipeForVolume`, `PinchToZoom`, `KeepScreenOn`, `BackgroundPlayback`,
-  `RepeatMode`
+  `PositionUpdateInterval`, `RepeatMode`
   (Off, One, All), `Shuffle`, `Autoplay`, `Volume`, `Muted`, `Pitch`, `SkipSilence`,
   `SeekMode` (Exact, Closest keyframe), `PlaybackSpeed`, `AutoAdvance`, `UpNextCountdown`, `PreferredAudioLanguage`,
   `PreferredSubtitleLanguage`, `ShowSubtitles`, `MaxVideoHeight`, `MaxVideoBitrate`
 - Advanced: `UserAgent`, `TargetLiveOffset`
 - Read-only: `IsPlaying`, `IsFullscreen`, `IsLive`, `LiveOffset`, `Position`, `Duration`,
   `Title`, `Artist`, `Queue`, `QueueLength`, `CurrentIndex`, `HasNext`, `HasPrevious`,
-  `VideoQualities`, `AudioTracks`, `SubtitleTracks`, `IsDialogShowing`
+  `VideoQualities`, `AudioTracks`, `SubtitleTracks`, `IsDialogShowing`, `BufferedPosition`,
+  `BufferedPercentage`, `VideoWidth`, `VideoHeight`, `VideoBitrate`, `DroppedFrames`,
+  `BandwidthEstimate`
 
 ## Testing
 

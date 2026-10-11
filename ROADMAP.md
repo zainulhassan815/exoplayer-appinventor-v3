@@ -66,11 +66,11 @@ Planned improvements to Media3Player, worked through in order. Items marked
 
 ## 8. Events and data
 
-- [ ] Periodic position update event; buffered position; buffering started and ended
-- [ ] Video size changed, first frame rendered, tracks changed, speed changed
-- [ ] Stream metadata: ICY and ID3 titles from internet radio
-- [ ] Error codes by category (network, not found, decoder, DRM…) besides the message
-- [ ] Statistics: bitrate, resolution, dropped frames, bandwidth estimate
+- [x] Periodic position update event; buffered position; buffering started and ended
+- [x] Video size changed, first frame rendered, tracks changed, speed changed
+- [x] Stream metadata: ICY and ID3 titles from internet radio
+- [x] Error codes by category (network, not found, decoder, DRM…) besides the message
+- [x] Statistics: bitrate, resolution, dropped frames, bandwidth estimate
 
 ## 9. Audio
 
