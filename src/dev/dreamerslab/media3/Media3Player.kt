@@ -3,6 +3,7 @@ package dev.dreamerslab.media3
 import android.app.Activity
 import android.app.PendingIntent
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.graphics.Color
@@ -23,9 +24,12 @@ import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import androidx.media3.extractor.metadata.icy.IcyInfo
 import androidx.media3.extractor.metadata.id3.TextInformationFrame
@@ -78,7 +82,15 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     private val activity: Activity = container.`$context`()
     private val http = DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true)
     private val mediaSources = DefaultMediaSourceFactory(DefaultDataSource.Factory(activity, http))
-    private val player = ExoPlayer.Builder(activity)
+    private val audioEffects = AudioEffects()
+    private val renderers = object : DefaultRenderersFactory(activity) {
+        override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioTrackPlaybackParams: Boolean): AudioSink =
+            DefaultAudioSink.Builder(context)
+                .setEnableFloatOutput(enableFloatOutput)
+                .setAudioProcessors(arrayOf(audioEffects.channelMixer))
+                .build()
+    }
+    private val player = ExoPlayer.Builder(activity, renderers)
         .setMediaSourceFactory(mediaSources)
         .setAudioAttributes(AudioAttributes.DEFAULT, true)
         .setHandleAudioBecomingNoisy(true)
@@ -136,6 +148,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     init {
         player.pauseAtEndOfMediaItems = true
         player.addListener(this)
+        audioEffects.attach(player.audioSessionId)
         player.addAnalyticsListener(object : AnalyticsListener {
             override fun onDroppedVideoFrames(eventTime: AnalyticsListener.EventTime, count: Int, elapsedMs: Long) {
                 droppedFrames += count
@@ -273,6 +286,29 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
             "subtitles off."
     )
     fun SelectSubtitle(index: Int) = select("SelectSubtitle", tracks.subtitles, index)
+
+    @SimpleFunction(description = "Uses the equalizer preset with the given name from EqualizerPresets.")
+    fun UseEqualizerPreset(name: String) {
+        if (!audioEffects.usePreset(name)) {
+            reportError("UseEqualizerPreset", ERROR_NOT_IN_LIST, "No equalizer preset is called \"$name\".")
+        }
+    }
+
+    @SimpleFunction(
+        description = "Sets the level of an equalizer band in decibels, between EqualizerMinLevel and " +
+            "EqualizerMaxLevel. Band starts at 1, in the order of EqualizerBands."
+    )
+    fun SetBandLevel(band: Int, decibels: Int) {
+        if (band !in 1..audioEffects.bandFrequencies.size) {
+            reportError("SetBandLevel", ERROR_NOT_IN_LIST, "Band $band is not in the list (1 to ${audioEffects.bandFrequencies.size}).")
+            return
+        }
+        val (min, max) = audioEffects.levelRangeDb
+        audioEffects.setBandLevel(band - 1, decibels.coerceIn(min, max))
+    }
+
+    @SimpleFunction(description = "Level of an equalizer band in decibels. Band starts at 1.")
+    fun BandLevel(band: Int): Int = audioEffects.bandLevelDb(band - 1)
 
     @SimpleFunction(description = "Jumps to the live edge of a live stream.")
     fun SeekToLiveEdge() = player.seekToDefaultPosition()
@@ -895,6 +931,74 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         ui?.subtitleBottomFraction = subtitleBottomMargin / 100f
     }
 
+    @SimpleProperty(description = "Turns on the equalizer.", category = PropertyCategory.BEHAVIOR)
+    fun EqualizerEnabled(): Boolean = audioEffects.equalizerEnabled
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "False")
+    @SimpleProperty
+    fun EqualizerEnabled(enabled: Boolean) {
+        audioEffects.equalizerEnabled = enabled
+    }
+
+    @SimpleProperty(description = "Names of the equalizer presets the device offers, like Rock or Jazz.")
+    fun EqualizerPresets(): YailList = YailList.makeList(audioEffects.presets)
+
+    @SimpleProperty(description = "Name of the equalizer preset in use, or empty after setting band levels.")
+    fun EqualizerPreset(): String = audioEffects.currentPreset
+
+    @SimpleProperty(description = "Center frequency of each equalizer band in hertz, from low to high.")
+    fun EqualizerBands(): YailList = YailList.makeList(audioEffects.bandFrequencies)
+
+    @SimpleProperty(description = "Lowest level an equalizer band can be set to, in decibels.")
+    fun EqualizerMinLevel(): Int = audioEffects.levelRangeDb.first
+
+    @SimpleProperty(description = "Highest level an equalizer band can be set to, in decibels.")
+    fun EqualizerMaxLevel(): Int = audioEffects.levelRangeDb.second
+
+    @SimpleProperty(description = "Strength of the bass boost, from 0 (off) to 100.", category = PropertyCategory.BEHAVIOR)
+    fun BassBoost(): Int = audioEffects.bassBoostPercent
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_NON_NEGATIVE_INTEGER, defaultValue = "0")
+    @SimpleProperty
+    fun BassBoost(percent: Int) {
+        audioEffects.bassBoostPercent = percent.coerceIn(0, 100)
+    }
+
+    @SimpleProperty(
+        description = "Makes quiet media louder, in decibels from 0 (off) to 20.",
+        category = PropertyCategory.BEHAVIOR
+    )
+    fun LoudnessBoost(): Int = audioEffects.loudnessGainDb
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_NON_NEGATIVE_INTEGER, defaultValue = "0")
+    @SimpleProperty
+    fun LoudnessBoost(decibels: Int) {
+        audioEffects.loudnessGainDb = decibels.coerceIn(0, 20)
+    }
+
+    @SimpleProperty(description = "Plays stereo audio as mono, the same in both ears.", category = PropertyCategory.BEHAVIOR)
+    fun Mono(): Boolean = audioEffects.mono
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "False")
+    @SimpleProperty
+    fun Mono(mono: Boolean) {
+        audioEffects.mono = mono
+        applyAudioMix()
+    }
+
+    @SimpleProperty(
+        description = "Balance between the left and right channels, from -100 (left only) to 100 (right only).",
+        category = PropertyCategory.BEHAVIOR
+    )
+    fun Balance(): Int = audioEffects.balance
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_INTEGER, defaultValue = "0")
+    @SimpleProperty
+    fun Balance(balance: Int) {
+        audioEffects.balance = balance.coerceIn(-100, 100)
+        applyAudioMix()
+    }
+
     @SimpleProperty(description = "Number of media in the queue.")
     fun QueueLength(): Int = player.mediaItemCount
 
@@ -1151,8 +1255,11 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         resumeOnForeground = false
     }
 
+    override fun onAudioSessionIdChanged(audioSessionId: Int) = audioEffects.attach(audioSessionId)
+
     override fun onDestroy() {
         mainThread.removeCallbacks(positionUpdates)
+        audioEffects.release()
         stopSession()
         ui?.release()
         player.release()
@@ -1262,6 +1369,12 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         in 4000..4999 -> "Decoder"
         in 6000..6999 -> "DRM"
         else -> "Other"
+    }
+
+    private fun applyAudioMix() {
+        if (player.playbackState == Player.STATE_READY || player.playbackState == Player.STATE_BUFFERING) {
+            player.seekTo(player.currentPosition)
+        }
     }
 
     private fun applyVolume() {

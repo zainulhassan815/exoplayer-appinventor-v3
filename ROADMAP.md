@@ -74,8 +74,8 @@ Planned improvements to Media3Player, worked through in order. Items marked
 
 ## 9. Audio
 
-- [ ] Equalizer presets and custom bands, bass boost, loudness enhancer
-- [ ] Mono and channel balance
+- [x] Equalizer presets and custom bands, bass boost, loudness enhancer
+- [x] Mono and channel balance
 
 ## 10. Caching and offline
 

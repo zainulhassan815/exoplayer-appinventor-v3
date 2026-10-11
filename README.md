@@ -15,6 +15,7 @@ as real AARs with their resources.
   and volume in fullscreen, each of which can be turned off
 - Fullscreen with landscape or portrait orientation, matching the video
 - Settings sheet: quality, playback speed, subtitles, audio track, zoom and loop
+- Equalizer, bass boost, loudness boost, mono and left/right balance
 - Background playback with a media notification, lock screen and headset controls
 - Queue with an up next countdown, replay, error and retry states, and a controls lock
 - MP4, HLS, DASH, SmoothStreaming and RTSP, live streams with a LIVE indicator, DRM
@@ -46,6 +47,7 @@ as real AARs with their resources.
 | `SetMetadata(artist, description, artworkUrl)` | Sets details of the most recently added media |
 | `SetHeader(name, value)` / `ClearHeaders()` | HTTP headers sent with every media request |
 | `SeekToLiveEdge()` | Jumps to the live edge of a live stream |
+| `UseEqualizerPreset(name)` / `SetBandLevel(band, decibels)` / `BandLevel(band)` | Equalizer |
 | `SelectQuality(index)` / `SelectAudioTrack(index)` / `SelectSubtitle(index)` | Chooses from `VideoQualities`, `AudioTracks` and `SubtitleTracks` |
 | `AddChapter(startSeconds, title)` / `ClearChapters()` | Chapters shown while scrubbing |
 | `Resume()` / `Pause()` / `Stop()` / `Replay()` / `SeekTo(positionMs)` | Playback control |
@@ -72,7 +74,8 @@ Properties, grouped in the designer:
   `SubtitleTextColor`, `SubtitleBackgroundColor`, `SubtitleEdge`, `SubtitleBottomMargin`
 - Behavior: `SeekIncrement`, `ControlsTimeout`, `DoubleTapToSeek`, `HoldForSpeed`,
   `SwipeForBrightness`, `SwipeForVolume`, `PinchToZoom`, `KeepScreenOn`, `BackgroundPlayback`,
-  `PositionUpdateInterval`, `RepeatMode`
+  `PositionUpdateInterval`, `EqualizerEnabled`, `BassBoost`, `LoudnessBoost`, `Mono`,
+  `Balance`, `RepeatMode`
   (Off, One, All), `Shuffle`, `Autoplay`, `Volume`, `Muted`, `Pitch`, `SkipSilence`,
   `SeekMode` (Exact, Closest keyframe), `PlaybackSpeed`, `AutoAdvance`, `UpNextCountdown`, `PreferredAudioLanguage`,
   `PreferredSubtitleLanguage`, `ShowSubtitles`, `MaxVideoHeight`, `MaxVideoBitrate`
@@ -81,7 +84,8 @@ Properties, grouped in the designer:
   `Title`, `Artist`, `Queue`, `QueueLength`, `CurrentIndex`, `HasNext`, `HasPrevious`,
   `VideoQualities`, `AudioTracks`, `SubtitleTracks`, `IsDialogShowing`, `BufferedPosition`,
   `BufferedPercentage`, `VideoWidth`, `VideoHeight`, `VideoBitrate`, `DroppedFrames`,
-  `BandwidthEstimate`
+  `BandwidthEstimate`, `EqualizerPresets`, `EqualizerPreset`, `EqualizerBands`,
+  `EqualizerMinLevel`, `EqualizerMaxLevel`
 
 ## Testing
 
