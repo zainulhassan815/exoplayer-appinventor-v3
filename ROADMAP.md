@@ -85,7 +85,7 @@ Planned improvements to Media3Player, worked through in order. Items marked
 
 ## 11. Advanced
 
-- [ ] Capture the current frame to an image file
+- [x] Capture the current frame to an image file
 - [ ] Several players on one screen (verify)
 - [ ] Thumbnail previews while scrubbing (sprite sheets)
 

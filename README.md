@@ -59,10 +59,11 @@ as real AARs with their resources.
 | `EnterFullscreen()` / `ExitFullscreen()` | Fullscreen control |
 | `ShowAsDialog()` / `CloseDialog()` | Shows the player in a dialog over the screen |
 | `MoveTo(arrangement)` | Moves the player into another arrangement |
+| `CaptureFrame(fileName)` | Saves the current video frame as a PNG image |
 
 Events: `PlaybackStateChanged`, `IsPlayingChanged`, `BufferingChanged`, `PositionChanged`,
 `MediaChanged`, `MetadataChanged`, `StreamTitleChanged`, `QueueChanged`, `TracksChanged`,
-`VideoSizeChanged`, `FirstFrameRendered`, `SpeedChanged`, `FullscreenChanged`, `DialogClosed`, `DownloadChanged`,
+`VideoSizeChanged`, `FirstFrameRendered`, `SpeedChanged`, `FullscreenChanged`, `DialogClosed`, `DownloadChanged`, `FrameCaptured`,
 `PlayerError(message, errorCode, category)` with category Network, NotFound, Format, Decoder,
 DRM or Other. An index outside the queue raises `Screen.ErrorOccurred`
 with error number 30101, and one outside a track list with 30102.

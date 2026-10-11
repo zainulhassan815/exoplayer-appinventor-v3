@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.content.pm.ActivityInfo
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.os.Handler
 import android.os.Looper
@@ -77,6 +78,7 @@ import dev.dreamerslab.media3.ui.Control
 import dev.dreamerslab.media3.ui.DEFAULT_ACCENT
 import dev.dreamerslab.media3.ui.Gesture
 import dev.dreamerslab.media3.ui.PlayerUi
+import java.io.File
 
 @Extension(
     description = "Video and audio player built on AndroidX Media3, with a modern player UI, gestures, " +
@@ -406,6 +408,26 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     @SimpleFunction(description = "Closes the dialog shown by ShowAsDialog and returns the player to its arrangement.")
     fun CloseDialog() {
         ui?.closeDialog()
+    }
+
+    @SimpleFunction(
+        description = "Saves the current video frame as a PNG image and fires FrameCaptured with its path. A " +
+            "file name without a folder is saved in the app's files folder. Protected (DRM) video can't be captured."
+    )
+    fun CaptureFrame(fileName: String) {
+        val view = ui ?: return reportError("CaptureFrame", ERROR_CAPTURE, "Call Create before capturing a frame.")
+        val file = File(fileName).takeIf { it.isAbsolute } ?: File(activity.getExternalFilesDir(null), fileName)
+        view.captureFrame { bitmap ->
+            if (bitmap == null) {
+                reportError("CaptureFrame", ERROR_CAPTURE, "There is no video frame to capture.")
+                return@captureFrame
+            }
+            Thread {
+                runCatching { file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) } }
+                    .onSuccess { FrameCaptured(file.absolutePath) }
+                    .onFailure { reportError("CaptureFrame", ERROR_CAPTURE, "Couldn't save the frame: ${it.message}") }
+            }.start()
+        }
     }
 
     @SimpleFunction(description = "Shows the player fullscreen.")
@@ -1261,6 +1283,11 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         dispatch("DownloadChanged", source, state, percent)
     }
 
+    @SimpleEvent(description = "CaptureFrame saved a video frame to the given path.")
+    fun FrameCaptured(path: String) {
+        dispatch("FrameCaptured", path)
+    }
+
     @SimpleEvent(description = "The dialog shown by ShowAsDialog was closed.")
     fun DialogClosed() {
         dispatch("DialogClosed")
@@ -1522,6 +1549,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     private companion object {
         const val ERROR_NOT_IN_QUEUE = 30101
         const val ERROR_NOT_IN_LIST = 30102
+        const val ERROR_CAPTURE = 30103
         val CAPTION_EDGES = mapOf(
             SubtitleEdge.None to CaptionStyleCompat.EDGE_TYPE_NONE,
             SubtitleEdge.Outline to CaptionStyleCompat.EDGE_TYPE_OUTLINE,

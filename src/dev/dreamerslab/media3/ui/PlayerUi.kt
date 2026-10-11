@@ -5,9 +5,11 @@ import android.app.Activity
 import android.content.Context
 import android.content.pm.ActivityInfo
 import android.content.res.ColorStateList
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Outline
 import android.net.Uri
+import android.os.Build
 import android.media.AudioManager
 import android.provider.Settings
 import android.text.SpannableStringBuilder
@@ -15,7 +17,9 @@ import android.text.Spanned
 import android.text.TextUtils
 import android.text.style.ForegroundColorSpan
 import android.view.GestureDetector
+import android.view.PixelCopy
 import android.view.ScaleGestureDetector
+import android.view.SurfaceView
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -504,6 +508,18 @@ internal class PlayerUi(
         dialog.dismiss()
         back.disable()
         onDialogClosed()
+    }
+
+    fun captureFrame(onResult: (Bitmap?) -> Unit) {
+        val surface = playerView.videoSurfaceView as? SurfaceView
+        if (surface == null || surface.width == 0 || player.videoSize.width == 0 || Build.VERSION.SDK_INT < 24) {
+            onResult(null)
+            return
+        }
+        val bitmap = Bitmap.createBitmap(surface.width, surface.height, Bitmap.Config.ARGB_8888)
+        PixelCopy.request(surface, bitmap, { result ->
+            onResult(if (result == PixelCopy.SUCCESS) bitmap else null)
+        }, handler)
     }
 
     fun release() {
