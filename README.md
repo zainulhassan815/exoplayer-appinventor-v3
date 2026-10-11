@@ -15,6 +15,7 @@ as real AARs with their resources.
   and volume in fullscreen, each of which can be turned off
 - Fullscreen with landscape or portrait orientation, matching the video
 - Settings sheet: quality, playback speed, subtitles, audio track, zoom and loop
+- Downloads for offline playback, a disk cache for streams and preloading of the next media
 - Equalizer, bass boost, loudness boost, mono and left/right balance
 - Background playback with a media notification, lock screen and headset controls
 - Queue with an up next countdown, replay, error and retry states, and a controls lock
@@ -47,6 +48,9 @@ as real AARs with their resources.
 | `SetMetadata(artist, description, artworkUrl)` | Sets details of the most recently added media |
 | `SetHeader(name, value)` / `ClearHeaders()` | HTTP headers sent with every media request |
 | `SeekToLiveEdge()` | Jumps to the live edge of a live stream |
+| `Download(source, title)` / `RemoveDownload(source)` / `RemoveAllDownloads()` | Downloads media for offline playback |
+| `IsDownloaded(source)` / `DownloadProgress(source)` | Download status |
+| `ClearCache()` | Deletes cached media |
 | `UseEqualizerPreset(name)` / `SetBandLevel(band, decibels)` / `BandLevel(band)` | Equalizer |
 | `SelectQuality(index)` / `SelectAudioTrack(index)` / `SelectSubtitle(index)` | Chooses from `VideoQualities`, `AudioTracks` and `SubtitleTracks` |
 | `AddChapter(startSeconds, title)` / `ClearChapters()` | Chapters shown while scrubbing |
@@ -58,7 +62,7 @@ as real AARs with their resources.
 
 Events: `PlaybackStateChanged`, `IsPlayingChanged`, `BufferingChanged`, `PositionChanged`,
 `MediaChanged`, `MetadataChanged`, `StreamTitleChanged`, `QueueChanged`, `TracksChanged`,
-`VideoSizeChanged`, `FirstFrameRendered`, `SpeedChanged`, `FullscreenChanged`, `DialogClosed`,
+`VideoSizeChanged`, `FirstFrameRendered`, `SpeedChanged`, `FullscreenChanged`, `DialogClosed`, `DownloadChanged`,
 `PlayerError(message, errorCode, category)` with category Network, NotFound, Format, Decoder,
 DRM or Other. An index outside the queue raises `Screen.ErrorOccurred`
 with error number 30101, and one outside a track list with 30102.
@@ -74,18 +78,18 @@ Properties, grouped in the designer:
   `SubtitleTextColor`, `SubtitleBackgroundColor`, `SubtitleEdge`, `SubtitleBottomMargin`
 - Behavior: `SeekIncrement`, `ControlsTimeout`, `DoubleTapToSeek`, `HoldForSpeed`,
   `SwipeForBrightness`, `SwipeForVolume`, `PinchToZoom`, `KeepScreenOn`, `BackgroundPlayback`,
-  `PositionUpdateInterval`, `EqualizerEnabled`, `BassBoost`, `LoudnessBoost`, `Mono`,
+  `PositionUpdateInterval`, `PreloadNext`, `EqualizerEnabled`, `BassBoost`, `LoudnessBoost`, `Mono`,
   `Balance`, `RepeatMode`
   (Off, One, All), `Shuffle`, `Autoplay`, `Volume`, `Muted`, `Pitch`, `SkipSilence`,
   `SeekMode` (Exact, Closest keyframe), `PlaybackSpeed`, `AutoAdvance`, `UpNextCountdown`, `PreferredAudioLanguage`,
   `PreferredSubtitleLanguage`, `ShowSubtitles`, `MaxVideoHeight`, `MaxVideoBitrate`
-- Advanced: `UserAgent`, `TargetLiveOffset`
+- Advanced: `UserAgent`, `TargetLiveOffset`, `CacheSize`
 - Read-only: `IsPlaying`, `IsFullscreen`, `IsLive`, `LiveOffset`, `Position`, `Duration`,
   `Title`, `Artist`, `Queue`, `QueueLength`, `CurrentIndex`, `HasNext`, `HasPrevious`,
   `VideoQualities`, `AudioTracks`, `SubtitleTracks`, `IsDialogShowing`, `BufferedPosition`,
   `BufferedPercentage`, `VideoWidth`, `VideoHeight`, `VideoBitrate`, `DroppedFrames`,
   `BandwidthEstimate`, `EqualizerPresets`, `EqualizerPreset`, `EqualizerBands`,
-  `EqualizerMinLevel`, `EqualizerMaxLevel`
+  `EqualizerMinLevel`, `EqualizerMaxLevel`, `CacheUsed`, `Downloads`
 
 ## Testing
 

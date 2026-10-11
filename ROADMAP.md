@@ -79,9 +79,9 @@ Planned improvements to Media3Player, worked through in order. Items marked
 
 ## 10. Caching and offline
 
-- [ ] Disk cache for streamed media with a size limit
-- [ ] Preload the next item in the queue
-- [ ] Downloads for offline playback with progress events **+dep**
+- [x] Disk cache for streamed media with a size limit
+- [x] Preload the next item in the queue
+- [x] Downloads for offline playback with progress events **+dep**
 
 ## 11. Advanced
 

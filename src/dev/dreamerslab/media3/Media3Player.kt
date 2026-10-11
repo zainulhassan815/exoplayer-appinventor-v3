@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.content.pm.ActivityInfo
 import android.graphics.Color
 import android.os.Handler
@@ -22,6 +23,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
+import androidx.media3.common.util.Util
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.cache.CacheDataSource
@@ -31,6 +33,10 @@ import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
+import androidx.media3.exoplayer.offline.Download
+import androidx.media3.exoplayer.offline.DownloadManager
+import androidx.media3.exoplayer.offline.DownloadRequest
+import androidx.media3.exoplayer.offline.DownloadService
 import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import androidx.media3.extractor.metadata.icy.IcyInfo
 import androidx.media3.extractor.metadata.id3.TextInformationFrame
@@ -120,6 +126,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     private var positionUpdateInterval = 0
     private var cacheSizeMb = 0
     private var preloadSeconds = 0
+    private var listeningToDownloads = false
     private var droppedFrames = 0
     private var isBuffering = false
     private val positionUpdates = object : Runnable {
@@ -152,6 +159,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     init {
         player.pauseAtEndOfMediaItems = true
         player.addListener(this)
+        updateDataSources()
         audioEffects.attach(player.audioSessionId)
         player.addAnalyticsListener(object : AnalyticsListener {
             override fun onDroppedVideoFrames(eventTime: AnalyticsListener.EventTime, count: Int, elapsedMs: Long) {
@@ -313,6 +321,34 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
 
     @SimpleFunction(description = "Level of an equalizer band in decibels. Band starts at 1.")
     fun BandLevel(band: Int): Int = audioEffects.bandLevelDb(band - 1)
+
+    @SimpleFunction(
+        description = "Downloads the media at the given url for offline playback. Playing the same url plays the " +
+            "download, even without a connection."
+    )
+    fun Download(source: String, title: String) {
+        val uri = MediaItems.resolve(source)
+        val request = DownloadRequest.Builder(uri.toString(), uri)
+            .setMimeType(downloadMimeType(uri))
+            .setData(title.toByteArray())
+            .build()
+        downloads()
+        DownloadService.sendAddDownload(activity, DownloadsService::class.java, request, false)
+    }
+
+    @SimpleFunction(description = "Deletes the download of the media at the given url.")
+    fun RemoveDownload(source: String) =
+        DownloadService.sendRemoveDownload(activity, DownloadsService::class.java, MediaItems.resolve(source).toString(), false)
+
+    @SimpleFunction(description = "Deletes all downloads.")
+    fun RemoveAllDownloads() = DownloadService.sendRemoveAllDownloads(activity, DownloadsService::class.java, false)
+
+    @SimpleFunction(description = "Whether the media at the given url is fully downloaded.")
+    fun IsDownloaded(source: String): Boolean = download(source)?.state == Download.STATE_COMPLETED
+
+    @SimpleFunction(description = "How much of the media at the given url has downloaded, from 0 to 100.")
+    fun DownloadProgress(source: String): Double =
+        download(source)?.percentDownloaded?.takeIf { it >= 0 }?.toDouble() ?: 0.0
 
     @SimpleFunction(description = "Deletes the media stored by the cache.")
     fun ClearCache() = OfflineStorage.clearStreamCache()
@@ -1020,6 +1056,15 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         updateDataSources()
     }
 
+    @SimpleProperty(description = "Urls of the downloaded and downloading media.")
+    fun Downloads(): YailList {
+        val urls = mutableListOf<String>()
+        downloads().downloadIndex.getDownloads().use { cursor ->
+            while (cursor.moveToNext()) urls += cursor.download.request.id
+        }
+        return YailList.makeList(urls)
+    }
+
     @SimpleProperty(description = "Megabytes the cache currently uses on the device.")
     fun CacheUsed(): Double = (OfflineStorage.streamCacheBytes * 100 / (1024 * 1024)) / 100.0
 
@@ -1208,6 +1253,14 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         dispatch("QueueChanged", length)
     }
 
+    @SimpleEvent(
+        description = "A download changed state: Queued, Downloading, Completed, Failed, Stopped, Removing, " +
+            "Restarting or Removed."
+    )
+    fun DownloadChanged(source: String, state: String, percent: Double) {
+        dispatch("DownloadChanged", source, state, percent)
+    }
+
     @SimpleEvent(description = "The dialog shown by ShowAsDialog was closed.")
     fun DialogClosed() {
         dispatch("DialogClosed")
@@ -1300,6 +1353,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     override fun onAudioSessionIdChanged(audioSessionId: Int) = audioEffects.attach(audioSessionId)
 
     override fun onDestroy() {
+        if (listeningToDownloads) downloads().removeListener(downloadListener)
         mainThread.removeCallbacks(positionUpdates)
         audioEffects.release()
         stopSession()
@@ -1421,7 +1475,38 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         } else {
             network
         }
-        mediaSources.setDataSourceFactory(cached)
+        mediaSources.setDataSourceFactory(
+            CacheDataSource.Factory()
+                .setCache(OfflineStorage.downloadCache(activity))
+                .setUpstreamDataSourceFactory(cached)
+                .setCacheWriteDataSinkFactory(null)
+        )
+    }
+
+    private fun downloads(): DownloadManager =
+        OfflineStorage.downloadManager(activity, http).also { manager ->
+            if (!listeningToDownloads) {
+                manager.addListener(downloadListener)
+                listeningToDownloads = true
+            }
+        }
+
+    private fun download(source: String): Download? =
+        downloads().downloadIndex.getDownload(MediaItems.resolve(source).toString())
+
+    private fun downloadMimeType(uri: Uri): String? = when (Util.inferContentType(uri)) {
+        C.CONTENT_TYPE_HLS -> MimeTypes.APPLICATION_M3U8
+        C.CONTENT_TYPE_DASH -> MimeTypes.APPLICATION_MPD
+        C.CONTENT_TYPE_SS -> MimeTypes.APPLICATION_SS
+        else -> null
+    }
+
+    private val downloadListener = object : DownloadManager.Listener {
+        override fun onDownloadChanged(manager: DownloadManager, download: Download, finalException: Exception?) =
+            DownloadChanged(download.request.id, DOWNLOAD_STATES.getValue(download.state), download.percentDownloaded.coerceAtLeast(0f).toDouble())
+
+        override fun onDownloadRemoved(manager: DownloadManager, download: Download) =
+            DownloadChanged(download.request.id, "Removed", 0.0)
     }
 
     private fun applyAudioMix() {
@@ -1455,6 +1540,15 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
             RepeatMode.Off to Player.REPEAT_MODE_OFF,
             RepeatMode.One to Player.REPEAT_MODE_ONE,
             RepeatMode.All to Player.REPEAT_MODE_ALL,
+        )
+        val DOWNLOAD_STATES = mapOf(
+            Download.STATE_QUEUED to "Queued",
+            Download.STATE_DOWNLOADING to "Downloading",
+            Download.STATE_COMPLETED to "Completed",
+            Download.STATE_FAILED to "Failed",
+            Download.STATE_STOPPED to "Stopped",
+            Download.STATE_REMOVING to "Removing",
+            Download.STATE_RESTARTING to "Restarting",
         )
         val SEEK_MODES = mapOf(
             SeekMode.Exact to SeekParameters.EXACT,
