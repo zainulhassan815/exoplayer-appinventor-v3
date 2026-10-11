@@ -14,6 +14,7 @@ import android.text.Spanned
 import android.text.TextUtils
 import android.text.style.ForegroundColorSpan
 import android.view.GestureDetector
+import android.view.ScaleGestureDetector
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -40,6 +41,8 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 internal class Chapter(val startMs: Long, val title: String)
+
+internal enum class Gesture { DOUBLE_TAP_SEEK, HOLD_FOR_SPEED, SWIPE_BRIGHTNESS, SWIPE_VOLUME, PINCH_TO_ZOOM }
 
 internal enum class Control { PREVIOUS_NEXT, SEEK_BUTTONS, SPEED, SUBTITLES, SETTINGS, FULLSCREEN, LOCK, TITLE, TIME_BAR }
 
@@ -70,7 +73,7 @@ internal class PlayerUi(
 
     var controlsTimeoutMs: Long = 3_000
 
-    var gesturesEnabled = true
+    var enabledGestures: Set<Gesture> = Gesture.entries.toSet()
 
     var chapters: List<Chapter> = emptyList()
         set(value) {
@@ -264,6 +267,7 @@ internal class PlayerUi(
     private val brightnessLevel = LevelIndicator(activity, Icon.BRIGHTNESS)
     private val volumeLevel = LevelIndicator(activity, Icon.VOLUME)
     private val boostBadge = Badge(activity, Icon.FAST_FORWARD, "2× speed")
+    private val zoomBadge = Badge(activity, Icon.ZOOM, "Zoomed to fill")
     private val spinner = ProgressBar(activity).apply {
         isIndeterminate = true
         visibility = INVISIBLE
@@ -298,6 +302,7 @@ internal class PlayerUi(
 
     private val hideControls = Runnable { setControlsVisible(false) }
     private val hideUnlock = Runnable { unlockBadge.fadeTo(false) }
+    private val hideZoomBadge = Runnable { zoomBadge.fadeTo(false) }
     private val progress = object : Runnable {
         override fun run() {
             updateProgress()
@@ -345,7 +350,7 @@ internal class PlayerUi(
         }
 
         override fun onDoubleTap(e: MotionEvent): Boolean {
-            if (locked || !controlsEnabled || !gesturesEnabled) return false
+            if (!allows(Gesture.DOUBLE_TAP_SEEK)) return false
             when {
                 e.x < width * 0.4f -> seekBy(-seekIncrementMs)
                 e.x > width * 0.6f -> seekBy(seekIncrementMs)
@@ -355,20 +360,21 @@ internal class PlayerUi(
         }
 
         override fun onLongPress(e: MotionEvent) {
-            if (locked || !controlsEnabled || !gesturesEnabled || !player.isPlaying) return
+            if (!allows(Gesture.HOLD_FOR_SPEED) || !player.isPlaying || pinch.isInProgress) return
             boosting = true
-            player.setPlaybackSpeed(2f)
+            player.playbackParameters = player.playbackParameters.withSpeed(2f)
             boostBadge.fadeTo(true)
             setControlsVisible(false)
         }
 
         override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
-            if (e1 == null || locked || !controlsEnabled || !gesturesEnabled || !isFullscreen) return false
+            if (e1 == null || !isFullscreen || pinch.isInProgress || e2.pointerCount > 1) return false
             val indicator = adjusting ?: run {
                 val dx = e2.x - e1.x
                 val dy = e2.y - e1.y
                 if (abs(dy) < dp(12) || abs(dy) < abs(dx)) return false
                 val left = e1.x < width / 2f
+                if (!allows(if (left) Gesture.SWIPE_BRIGHTNESS else Gesture.SWIPE_VOLUME)) return false
                 adjustStart = if (left) brightness() else volume()
                 setControlsVisible(false)
                 (if (left) brightnessLevel else volumeLevel).also { adjusting = it }
@@ -377,6 +383,33 @@ internal class PlayerUi(
             if (indicator === brightnessLevel) setBrightness(level) else setVolume(level)
             indicator.show(level)
             return true
+        }
+    })
+
+    private val pinch = ScaleGestureDetector(activity, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+        private var scale = 1f
+
+        override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
+            scale = 1f
+            return allows(Gesture.PINCH_TO_ZOOM)
+        }
+
+        override fun onScale(detector: ScaleGestureDetector): Boolean {
+            scale *= detector.scaleFactor
+            return true
+        }
+
+        override fun onScaleEnd(detector: ScaleGestureDetector) {
+            val zoom = when {
+                scale > 1.15f -> true
+                scale < 0.87f -> false
+                else -> return
+            }
+            zoomToFill = zoom
+            zoomBadge.text = if (zoom) "Zoomed to fill" else "Fit to screen"
+            zoomBadge.fadeTo(true)
+            removeCallbacks(hideZoomBadge)
+            postDelayed(hideZoomBadge, 1200)
         }
     })
 
@@ -390,6 +423,7 @@ internal class PlayerUi(
         addView(brightnessLevel, frame(dp(44), dp(168), Gravity.CENTER_VERTICAL or Gravity.START))
         addView(volumeLevel, frame(dp(44), dp(168), Gravity.CENTER_VERTICAL or Gravity.END))
         addView(boostBadge, frame(WRAP, WRAP, Gravity.TOP or Gravity.CENTER_HORIZONTAL).margins(top = dp(16)))
+        addView(zoomBadge, frame(WRAP, WRAP, Gravity.TOP or Gravity.CENTER_HORIZONTAL).margins(top = dp(16)))
         addView(spinner, frame(dp(52), dp(52), Gravity.CENTER))
         addView(errorOverlay, frame(MATCH, MATCH))
         addView(endedOverlay, frame(MATCH, MATCH))
@@ -440,9 +474,11 @@ internal class PlayerUi(
         removeCallbacks(progress)
         removeCallbacks(hideControls)
         removeCallbacks(hideUnlock)
+        removeCallbacks(hideZoomBadge)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        pinch.onTouchEvent(event)
         gestures.onTouchEvent(event)
         if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
             if (boosting) stopBoost()
@@ -613,7 +649,7 @@ internal class PlayerUi(
 
     private fun stopBoost() {
         boosting = false
-        player.setPlaybackSpeed(speedChip.speed)
+        player.playbackParameters = player.playbackParameters.withSpeed(speedChip.speed)
         boostBadge.fadeTo(false)
     }
 
@@ -748,6 +784,8 @@ internal class PlayerUi(
         updateQueueButtons()
         applyLayout(isFullscreen)
     }
+
+    private fun allows(gesture: Gesture) = controlsEnabled && !locked && gesture in enabledGestures
 
     private val secondaryControlColor: Int get() = withAlpha(controlColor, 0xB3)
 

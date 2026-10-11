@@ -49,6 +49,7 @@ import dev.dreamerslab.media3.ui.Chapter
 import dev.dreamerslab.media3.ui.Choice
 import dev.dreamerslab.media3.ui.Control
 import dev.dreamerslab.media3.ui.DEFAULT_ACCENT
+import dev.dreamerslab.media3.ui.Gesture
 import dev.dreamerslab.media3.ui.PlayerUi
 
 @Extension(
@@ -76,7 +77,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     private var accentColor = DEFAULT_ACCENT
     private var seekIncrement = 10
     private var controlsTimeout = 3000
-    private var gesturesEnabled = true
+    private var enabledGestures = Gesture.entries.toSet()
     private var resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
     private var fullscreenOrientation = FullscreenOrientation.Auto
     private var autoplay = true
@@ -528,18 +529,40 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         ui?.controlsTimeoutMs = milliseconds.toLong()
     }
 
-    @SimpleProperty(
-        description = "Enables double tap to seek, hold for 2× speed, and swiping for brightness and volume in fullscreen.",
-        category = PropertyCategory.BEHAVIOR
-    )
-    fun GesturesEnabled(): Boolean = gesturesEnabled
+    @SimpleProperty(description = "Double tap the sides to rewind or forward, and the middle to play or pause.", category = PropertyCategory.BEHAVIOR)
+    fun DoubleTapToSeek(): Boolean = Gesture.DOUBLE_TAP_SEEK in enabledGestures
 
     @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "True")
     @SimpleProperty
-    fun GesturesEnabled(enabled: Boolean) {
-        gesturesEnabled = enabled
-        ui?.gesturesEnabled = enabled
-    }
+    fun DoubleTapToSeek(enabled: Boolean) = enableGesture(Gesture.DOUBLE_TAP_SEEK, enabled)
+
+    @SimpleProperty(description = "Touch and hold to play at 2× speed.", category = PropertyCategory.BEHAVIOR)
+    fun HoldForSpeed(): Boolean = Gesture.HOLD_FOR_SPEED in enabledGestures
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "True")
+    @SimpleProperty
+    fun HoldForSpeed(enabled: Boolean) = enableGesture(Gesture.HOLD_FOR_SPEED, enabled)
+
+    @SimpleProperty(description = "Swipe up or down on the left in fullscreen to change the brightness.", category = PropertyCategory.BEHAVIOR)
+    fun SwipeForBrightness(): Boolean = Gesture.SWIPE_BRIGHTNESS in enabledGestures
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "True")
+    @SimpleProperty
+    fun SwipeForBrightness(enabled: Boolean) = enableGesture(Gesture.SWIPE_BRIGHTNESS, enabled)
+
+    @SimpleProperty(description = "Swipe up or down on the right in fullscreen to change the volume.", category = PropertyCategory.BEHAVIOR)
+    fun SwipeForVolume(): Boolean = Gesture.SWIPE_VOLUME in enabledGestures
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "True")
+    @SimpleProperty
+    fun SwipeForVolume(enabled: Boolean) = enableGesture(Gesture.SWIPE_VOLUME, enabled)
+
+    @SimpleProperty(description = "Pinch out to zoom the video to fill the player, and in to fit it.", category = PropertyCategory.BEHAVIOR)
+    fun PinchToZoom(): Boolean = Gesture.PINCH_TO_ZOOM in enabledGestures
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "True")
+    @SimpleProperty
+    fun PinchToZoom(enabled: Boolean) = enableGesture(Gesture.PINCH_TO_ZOOM, enabled)
 
     @SimpleProperty(description = "Whether the current media or the whole queue repeats.", category = PropertyCategory.BEHAVIOR)
     @Options(RepeatMode::class)
@@ -941,6 +964,11 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
 
     private fun cornerRadiusPx() = cornerRadius * activity.resources.displayMetrics.density
 
+    private fun enableGesture(gesture: Gesture, enabled: Boolean) {
+        enabledGestures = if (enabled) enabledGestures + gesture else enabledGestures - gesture
+        ui?.enabledGestures = enabledGestures
+    }
+
     private fun showControl(control: Control, show: Boolean) {
         hiddenControls = if (show) hiddenControls - control else hiddenControls + control
         ui?.hiddenControls = hiddenControls
@@ -1059,7 +1087,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
             accent = accentColor
             seekIncrementMs = seekIncrement * 1000L
             controlsTimeoutMs = controlsTimeout.toLong()
-            gesturesEnabled = this@Media3Player.gesturesEnabled
+            enabledGestures = this@Media3Player.enabledGestures
             resizeMode = this@Media3Player.resizeMode
             fullscreenOrientation = ORIENTATIONS[this@Media3Player.fullscreenOrientation]
             captionStyle = this@Media3Player.captionStyle()
