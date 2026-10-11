@@ -61,6 +61,8 @@ internal class PlayerUi(
 
     var onFullscreenChanged: (Boolean) -> Unit = {}
 
+    var onDialogClosed: () -> Unit = {}
+
     var accent: Int = DEFAULT_ACCENT
         set(value) {
             field = value
@@ -188,6 +190,8 @@ internal class PlayerUi(
 
     val isFullscreen: Boolean get() = fullscreen.isActive
 
+    val isInDialog: Boolean get() = dialog.isShowing
+
     private val playerView = PlayerView(activity).apply {
         useController = false
         player = this@PlayerUi.player
@@ -305,11 +309,12 @@ internal class PlayerUi(
 
     private val sheet = SettingsSheet(activity.findViewById(android.R.id.content), this).apply {
         onDismiss = {
-            if (!isFullscreen) back.disable()
+            if (!isFullscreen && !isInDialog) back.disable()
             scheduleHide()
         }
     }
     private val fullscreen = Fullscreen(activity, this)
+    private val dialog = PlayerDialog(activity, this, onBackdropTap = { closeDialog() })
     private val back = BackInterceptor(activity, this)
     private val audio = activity.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
@@ -481,11 +486,28 @@ internal class PlayerUi(
         fullscreen.exit()
         resetBrightness()
         applyLayout(fullscreen = false)
-        back.disable()
+        if (!isInDialog) back.disable()
         onFullscreenChanged(false)
     }
 
+    fun showDialog() {
+        if (isInDialog) return
+        exitFullscreen()
+        dialog.show()
+        back.enable(::handleBack)
+    }
+
+    fun closeDialog() {
+        if (!isInDialog) return
+        exitFullscreen()
+        sheet.dismiss()
+        dialog.dismiss()
+        back.disable()
+        onDialogClosed()
+    }
+
     fun release() {
+        closeDialog()
         exitFullscreen()
         sheet.dismiss()
         endedOverlay.hide()
@@ -764,12 +786,16 @@ internal class PlayerUi(
 
     private fun openSettings(page: SettingsSheet.Page) {
         removeCallbacks(hideControls)
-        if (!isFullscreen) back.enable(::handleBack)
+        if (!isFullscreen && !isInDialog) back.enable(::handleBack)
         sheet.show(page, side = isFullscreen)
     }
 
     private fun handleBack() {
-        if (sheet.isShowing) sheet.dismiss() else exitFullscreen()
+        when {
+            sheet.isShowing -> sheet.dismiss()
+            isFullscreen -> exitFullscreen()
+            else -> closeDialog()
+        }
     }
 
     private fun brightness(): Float {

@@ -46,15 +46,15 @@ Planned improvements to Media3Player, worked through in order. Items marked
 
 ## 6. Player UI customization
 
-- [ ] Show or hide each control: previous/next, ±seek, speed chip, subtitles, settings,
+- [x] Show or hide each control: previous/next, ±seek, speed chip, subtitles, settings,
       fullscreen, lock, title, time bar
-- [ ] Colors: background, control tint, seek bar played / buffered / unplayed, scrim
-- [ ] Poster image before playback; audio-only mode with artwork
-- [ ] Remaining time instead of duration; corner radius
-- [ ] Each gesture separately: double tap seek, hold for 2×, brightness, volume, pinch to zoom
-- [ ] Keep the screen on while playing
-- [ ] No built-in controls, so apps can build their own UI with blocks
-- [ ] Move the player to another arrangement; show it as a dialog
+- [x] Colors: background, control tint, seek bar played / buffered / unplayed, scrim
+- [x] Poster image before playback; audio-only mode with artwork
+- [x] Remaining time instead of duration; corner radius
+- [x] Each gesture separately: double tap seek, hold for 2×, brightness, volume, pinch to zoom
+- [x] Keep the screen on while playing
+- [x] No built-in controls, so apps can build their own UI with blocks
+- [x] Move the player to another arrangement; show it as a dialog
 
 ## 7. Background playback and system integration
 

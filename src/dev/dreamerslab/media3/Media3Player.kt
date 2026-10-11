@@ -123,13 +123,11 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         }
         val view = PlayerUi(activity, player, tracks).apply {
             onFullscreenChanged = { FullscreenChanged(it) }
+            onDialogClosed = { DialogClosed() }
         }
         ui = view
         applySettings()
-        (arrangement.view as ViewGroup).addView(
-            view,
-            ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-        )
+        attach(view, arrangement)
     }
 
     @SimpleFunction(description = "Plays the media at the given url or asset name, replacing the queue.")
@@ -280,6 +278,25 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
 
     @SimpleFunction(description = "Removes all media from the queue and stops playback.")
     fun ClearQueue() = player.clearMediaItems()
+
+    @SimpleFunction(description = "Moves the player into another arrangement, keeping what it plays.")
+    fun MoveTo(arrangement: HVArrangement) {
+        val view = ui ?: return Create(arrangement)
+        view.closeDialog()
+        view.exitFullscreen()
+        (view.parent as? ViewGroup)?.removeView(view)
+        attach(view, arrangement)
+    }
+
+    @SimpleFunction(description = "Shows the player in a dialog over the screen. Tapping outside or pressing back closes it.")
+    fun ShowAsDialog() {
+        ui?.showDialog()
+    }
+
+    @SimpleFunction(description = "Closes the dialog shown by ShowAsDialog and returns the player to its arrangement.")
+    fun CloseDialog() {
+        ui?.closeDialog()
+    }
 
     @SimpleFunction(description = "Shows the player fullscreen.")
     fun EnterFullscreen() {
@@ -881,6 +898,9 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     @SimpleProperty(description = "Whether media is playing.")
     fun IsPlaying(): Boolean = player.isPlaying
 
+    @SimpleProperty(description = "Whether the player is shown in a dialog.")
+    fun IsDialogShowing(): Boolean = ui?.isInDialog == true
+
     @SimpleProperty(description = "Whether the player is fullscreen.")
     fun IsFullscreen(): Boolean = ui?.isFullscreen == true
 
@@ -924,6 +944,11 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     @SimpleEvent(description = "Media was added to, removed from or moved in the queue.")
     fun QueueChanged(length: Int) {
         dispatch("QueueChanged", length)
+    }
+
+    @SimpleEvent(description = "The dialog shown by ShowAsDialog was closed.")
+    fun DialogClosed() {
+        dispatch("DialogClosed")
     }
 
     @SimpleEvent(description = "The player entered or left fullscreen.")
@@ -984,6 +1009,13 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     private fun enableGesture(gesture: Gesture, enabled: Boolean) {
         enabledGestures = if (enabled) enabledGestures + gesture else enabledGestures - gesture
         ui?.enabledGestures = enabledGestures
+    }
+
+    private fun attach(view: PlayerUi, arrangement: HVArrangement) {
+        (arrangement.view as ViewGroup).addView(
+            view,
+            ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        )
     }
 
     private fun showControl(control: Control, show: Boolean) {

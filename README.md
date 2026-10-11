@@ -11,8 +11,8 @@ as real AARs with their resources.
 
 - Modern player UI: auto-hiding controls, seek bar with buffering and chapters,
   previous / next, ±10s, speed chip, subtitles and settings
-- Gestures: double tap to seek, hold for 2× speed, swipe for brightness and volume
-  in fullscreen
+- Gestures: double tap to seek, hold for 2× speed, pinch to zoom, swipe for brightness
+  and volume in fullscreen, each of which can be turned off
 - Fullscreen with landscape or portrait orientation, matching the video
 - Settings sheet: quality, playback speed, subtitles, audio track, zoom and loop
 - Queue with an up next countdown, replay, error and retry states, and a controls lock
@@ -50,24 +50,31 @@ as real AARs with their resources.
 | `Resume()` / `Pause()` / `Stop()` / `Replay()` / `SeekTo(positionMs)` | Playback control |
 | `Next()` / `Previous()` / `PlayAt(index)` / `SeekToItem(index, positionMs)` / `ClearQueue()` | Queue control |
 | `EnterFullscreen()` / `ExitFullscreen()` | Fullscreen control |
+| `ShowAsDialog()` / `CloseDialog()` | Shows the player in a dialog over the screen |
+| `MoveTo(arrangement)` | Moves the player into another arrangement |
 
 Events: `PlaybackStateChanged`, `IsPlayingChanged`, `MediaChanged`, `QueueChanged`, `TracksChanged`,
-`FullscreenChanged`, `PlayerError`. An index outside the queue raises `Screen.ErrorOccurred`
+`FullscreenChanged`, `DialogClosed`, `PlayerError`. An index outside the queue raises `Screen.ErrorOccurred`
 with error number 30101, and one outside a track list with 30102.
 
 Properties, grouped in the designer:
 
-- Appearance: `AccentColor`, `ResizeMode` (Fit, Fill, Zoom, Fixed width, Fixed height),
+- Appearance: `ShowControls`, `ShowPreviousNext`, `ShowSeekButtons`, `ShowSpeedButton`,
+  `ShowSubtitlesButton`, `ShowSettingsButton`, `ShowFullscreenButton`, `ShowLockButton`,
+  `ShowTitle`, `ShowTimeBar`, `BackgroundColor`, `ControlsColor`, `ScrimColor`,
+  `SeekBarTrackColor`, `SeekBarBufferedColor`, `CornerRadius`, `PosterImage`,
+  `ShowRemainingTime`, `AccentColor`, `ResizeMode` (Fit, Fill, Zoom, Fixed width, Fixed height),
   `FullscreenOrientation` (Auto, Landscape, Portrait, Sensor), `SubtitleSize`,
   `SubtitleTextColor`, `SubtitleBackgroundColor`, `SubtitleEdge`, `SubtitleBottomMargin`
-- Behavior: `SeekIncrement`, `ControlsTimeout`, `GesturesEnabled`, `RepeatMode`
+- Behavior: `SeekIncrement`, `ControlsTimeout`, `DoubleTapToSeek`, `HoldForSpeed`,
+  `SwipeForBrightness`, `SwipeForVolume`, `PinchToZoom`, `KeepScreenOn`, `RepeatMode`
   (Off, One, All), `Shuffle`, `Autoplay`, `Volume`, `Muted`, `Pitch`, `SkipSilence`,
   `SeekMode` (Exact, Closest keyframe), `PlaybackSpeed`, `AutoAdvance`, `UpNextCountdown`, `PreferredAudioLanguage`,
   `PreferredSubtitleLanguage`, `ShowSubtitles`, `MaxVideoHeight`, `MaxVideoBitrate`
 - Advanced: `UserAgent`, `TargetLiveOffset`
 - Read-only: `IsPlaying`, `IsFullscreen`, `IsLive`, `LiveOffset`, `Position`, `Duration`,
   `Title`, `Artist`, `Queue`, `QueueLength`, `CurrentIndex`, `HasNext`, `HasPrevious`,
-  `VideoQualities`, `AudioTracks`, `SubtitleTracks`
+  `VideoQualities`, `AudioTracks`, `SubtitleTracks`, `IsDialogShowing`
 
 ## Testing
 
