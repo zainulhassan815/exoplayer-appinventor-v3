@@ -3,6 +3,7 @@ package dev.dreamerslab.media3.ui
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
+import android.content.pm.ActivityInfo
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.media.AudioManager
@@ -71,11 +72,19 @@ internal class PlayerUi(
             timeBar.chapterStarts = field.map { it.startMs }
         }
 
-    override var zoomToFill: Boolean
-        get() = playerView.resizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+    var resizeMode: Int
+        get() = playerView.resizeMode
         set(value) {
-            playerView.resizeMode = if (value) AspectRatioFrameLayout.RESIZE_MODE_ZOOM else AspectRatioFrameLayout.RESIZE_MODE_FIT
+            playerView.resizeMode = value
         }
+
+    override var zoomToFill: Boolean
+        get() = resizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+        set(value) {
+            resizeMode = if (value) AspectRatioFrameLayout.RESIZE_MODE_ZOOM else AspectRatioFrameLayout.RESIZE_MODE_FIT
+        }
+
+    var fullscreenOrientation: Int? = null
 
     val isFullscreen: Boolean get() = fullscreen.isActive
 
@@ -304,11 +313,19 @@ internal class PlayerUi(
     fun enterFullscreen() {
         if (isFullscreen) return
         sheet.dismiss()
-        val video = player.videoSize
-        fullscreen.enter(portraitVideo = video.height > video.width)
+        fullscreen.enter(fullscreenOrientation ?: videoOrientation())
         applyLayout(fullscreen = true)
         back.enable(::handleBack)
         onFullscreenChanged(true)
+    }
+
+    private fun videoOrientation(): Int {
+        val video = player.videoSize
+        return if (video.height > video.width) {
+            ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+        } else {
+            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        }
     }
 
     fun exitFullscreen() {

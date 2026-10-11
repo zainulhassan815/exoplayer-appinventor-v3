@@ -17,7 +17,8 @@ as real AARs with their resources.
 - Settings sheet: quality, playback speed, subtitles, audio track, zoom and loop
 - Queue with an up next countdown, replay, error and retry states, and a controls lock
 - MP4, HLS and DASH; side-loaded WebVTT, SRT, TTML and SSA subtitles
-- Accent color and behavior configurable from the designer
+- Accent color, resize mode, fullscreen orientation, repeat mode and behavior
+  configurable from the designer
 
 ## Usage
 
@@ -43,9 +44,13 @@ as real AARs with their resources.
 Events: `PlaybackStateChanged`, `IsPlayingChanged`, `MediaChanged`,
 `FullscreenChanged`, `PlayerError`.
 
-Properties: `AccentColor`, `SeekIncrement`, `ControlsTimeout`, `GesturesEnabled`,
-`ZoomToFill`, `Loop`, `PlaybackSpeed`, and read-only `IsPlaying`, `IsFullscreen`,
-`Position`, `Duration`, `Title`.
+Properties, grouped in the designer:
+
+- Appearance: `AccentColor`, `ResizeMode` (Fit, Fill, Zoom, Fixed width, Fixed height),
+  `FullscreenOrientation` (Auto, Landscape, Portrait, Sensor)
+- Behavior: `SeekIncrement`, `ControlsTimeout`, `GesturesEnabled`, `RepeatMode`
+  (Off, One, All), `PlaybackSpeed`
+- Read-only: `IsPlaying`, `IsFullscreen`, `Position`, `Duration`, `Title`
 
 ## Testing
 

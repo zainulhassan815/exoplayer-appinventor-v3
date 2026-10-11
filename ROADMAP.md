@@ -5,11 +5,12 @@ Planned improvements to Media3Player, worked through in order. Items marked
 
 ## 1. Designer organization
 
-- [ ] Group properties into categories (Appearance, Behavior, Gestures, Playback)
-- [ ] Dropdowns: resize mode (Fit, Fill, Zoom, Fixed width, Fixed height), repeat mode
+- [x] Group properties into categories (App Inventor only offers fixed ones: Appearance
+      and Behavior)
+- [x] Dropdowns: resize mode (Fit, Fill, Zoom, Fixed width, Fixed height), repeat mode
       (Off, One, All), fullscreen orientation (Auto, Landscape, Portrait, Sensor)
-- [ ] Getter blocks for every designer property
-- [ ] Descriptions for every block and dropdown option
+- [x] Getter blocks for every designer property
+- [x] Descriptions for every block and dropdown option
 
 ## 2. Playback control
 

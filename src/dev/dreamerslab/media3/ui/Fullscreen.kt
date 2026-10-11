@@ -24,7 +24,7 @@ internal class Fullscreen(private val activity: Activity, private val view: View
     var isActive = false
         private set
 
-    fun enter(portraitVideo: Boolean) {
+    fun enter(requestedOrientation: Int) {
         if (isActive) return
         val currentParent = view.parent as? ViewGroup ?: return
         parent = currentParent
@@ -35,11 +35,7 @@ internal class Fullscreen(private val activity: Activity, private val view: View
         currentParent.addView(placeholder, index, ViewGroup.LayoutParams(params?.width ?: MATCH, view.height.takeIf { it > 0 } ?: WRAP))
         content.addView(view, FrameLayout.LayoutParams(MATCH, MATCH))
         orientation = activity.requestedOrientation
-        activity.requestedOrientation = if (portraitVideo) {
-            ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-        } else {
-            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        }
+        activity.requestedOrientation = requestedOrientation
         systemBars().apply {
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             hide(WindowInsetsCompat.Type.systemBars())

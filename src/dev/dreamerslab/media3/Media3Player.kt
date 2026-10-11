@@ -1,6 +1,7 @@
 package dev.dreamerslab.media3
 
 import android.app.Activity
+import android.content.pm.ActivityInfo
 import android.os.Handler
 import android.os.Looper
 import android.view.ViewGroup
@@ -10,8 +11,11 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
 import com.google.appinventor.components.annotations.DesignerProperty
 import com.google.appinventor.components.annotations.Extension
+import com.google.appinventor.components.annotations.Options
+import com.google.appinventor.components.annotations.PropertyCategory
 import com.google.appinventor.components.annotations.SimpleEvent
 import com.google.appinventor.components.annotations.SimpleFunction
 import com.google.appinventor.components.annotations.SimpleProperty
@@ -23,6 +27,9 @@ import com.google.appinventor.components.runtime.HVArrangement
 import com.google.appinventor.components.runtime.OnDestroyListener
 import com.google.appinventor.components.runtime.OnPauseListener
 import com.google.appinventor.components.runtime.OnResumeListener
+import dev.dreamerslab.media3.helpers.FullscreenOrientation
+import dev.dreamerslab.media3.helpers.RepeatMode
+import dev.dreamerslab.media3.helpers.ResizeMode
 import dev.dreamerslab.media3.ui.Chapter
 import dev.dreamerslab.media3.ui.DEFAULT_ACCENT
 import dev.dreamerslab.media3.ui.PlayerUi
@@ -50,7 +57,8 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     private var seekIncrement = 10
     private var controlsTimeout = 3000
     private var gesturesEnabled = true
-    private var zoomToFill = false
+    private var resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+    private var fullscreenOrientation = FullscreenOrientation.Auto
 
     init {
         player.pauseAtEndOfMediaItems = true
@@ -140,7 +148,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         ui?.chapters = emptyList()
     }
 
-    @SimpleProperty(description = "Color of the seek bar, buttons and highlights.")
+    @SimpleProperty(description = "Color of the seek bar, buttons and highlights.", category = PropertyCategory.APPEARANCE)
     fun AccentColor(): Int = accentColor
 
     @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_COLOR, defaultValue = "&HFF7C5CFF")
@@ -150,7 +158,41 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         ui?.accent = color
     }
 
-    @SimpleProperty(description = "Seconds skipped by the rewind and forward buttons and double taps.")
+    @SimpleProperty(description = "How the video fits the player.", category = PropertyCategory.APPEARANCE)
+    @Options(ResizeMode::class)
+    fun ResizeMode(): String =
+        RESIZE_MODES.entries.first { it.value == (ui?.resizeMode ?: resizeMode) }.key.toUnderlyingValue()
+
+    @DesignerProperty(
+        editorType = PropertyTypeConstants.PROPERTY_TYPE_CHOICES,
+        editorArgs = ["Fit", "Fill", "Zoom", "Fixed width", "Fixed height"],
+        defaultValue = "Fit"
+    )
+    @SimpleProperty
+    fun ResizeMode(@Options(ResizeMode::class) mode: String) {
+        resizeMode = RESIZE_MODES.getValue(ResizeMode.fromUnderlyingValue(mode) ?: return)
+        ui?.resizeMode = resizeMode
+    }
+
+    @SimpleProperty(description = "Orientation of the screen in fullscreen.", category = PropertyCategory.APPEARANCE)
+    @Options(FullscreenOrientation::class)
+    fun FullscreenOrientation(): String = fullscreenOrientation.toUnderlyingValue()
+
+    @DesignerProperty(
+        editorType = PropertyTypeConstants.PROPERTY_TYPE_CHOICES,
+        editorArgs = ["Auto", "Landscape", "Portrait", "Sensor"],
+        defaultValue = "Auto"
+    )
+    @SimpleProperty
+    fun FullscreenOrientation(@Options(FullscreenOrientation::class) orientation: String) {
+        fullscreenOrientation = FullscreenOrientation.fromUnderlyingValue(orientation) ?: return
+        ui?.fullscreenOrientation = ORIENTATIONS[fullscreenOrientation]
+    }
+
+    @SimpleProperty(
+        description = "Seconds skipped by the rewind and forward buttons and double taps.",
+        category = PropertyCategory.BEHAVIOR
+    )
     fun SeekIncrement(): Int = seekIncrement
 
     @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_NON_NEGATIVE_INTEGER, defaultValue = "10")
@@ -160,7 +202,10 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         ui?.seekIncrementMs = seekIncrement * 1000L
     }
 
-    @SimpleProperty(description = "Milliseconds of inactivity after which the controls hide.")
+    @SimpleProperty(
+        description = "Milliseconds of inactivity after which the controls hide.",
+        category = PropertyCategory.BEHAVIOR
+    )
     fun ControlsTimeout(): Int = controlsTimeout
 
     @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_NON_NEGATIVE_INTEGER, defaultValue = "3000")
@@ -171,7 +216,8 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     }
 
     @SimpleProperty(
-        description = "Enables double tap to seek, hold for 2× speed, and swiping for brightness and volume in fullscreen."
+        description = "Enables double tap to seek, hold for 2× speed, and swiping for brightness and volume in fullscreen.",
+        category = PropertyCategory.BEHAVIOR
     )
     fun GesturesEnabled(): Boolean = gesturesEnabled
 
@@ -182,28 +228,24 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         ui?.gesturesEnabled = enabled
     }
 
-    @SimpleProperty(description = "Crops the video to fill the player instead of fitting it.")
-    fun ZoomToFill(): Boolean = zoomToFill
+    @SimpleProperty(description = "Whether the current media or the whole queue repeats.", category = PropertyCategory.BEHAVIOR)
+    @Options(RepeatMode::class)
+    fun RepeatMode(): String = REPEAT_MODES.entries.first { it.value == player.repeatMode }.key.toUnderlyingValue()
 
-    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "False")
+    @DesignerProperty(
+        editorType = PropertyTypeConstants.PROPERTY_TYPE_CHOICES,
+        editorArgs = ["Off", "One", "All"],
+        defaultValue = "Off"
+    )
     @SimpleProperty
-    fun ZoomToFill(zoom: Boolean) {
-        zoomToFill = zoom
-        ui?.zoomToFill = zoom
+    fun RepeatMode(@Options(RepeatMode::class) mode: String) {
+        player.repeatMode = REPEAT_MODES.getValue(RepeatMode.fromUnderlyingValue(mode) ?: return)
     }
 
-    @SimpleProperty(description = "Repeats the current media.")
-    fun Loop(): Boolean = tracks.loop
-
-    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "False")
-    @SimpleProperty
-    fun Loop(loop: Boolean) {
-        tracks.loop = loop
-    }
-
-    @SimpleProperty(description = "Playback speed, from 0.25 to 2.")
+    @SimpleProperty(description = "Playback speed, from 0.25 to 2.", category = PropertyCategory.BEHAVIOR)
     fun PlaybackSpeed(): Float = tracks.speed
 
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_NON_NEGATIVE_FLOAT, defaultValue = "1.0")
     @SimpleProperty
     fun PlaybackSpeed(speed: Float) {
         tracks.speed = speed.coerceIn(0.25f, 2f)
@@ -282,6 +324,27 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         player.release()
     }
 
+    private companion object {
+        val RESIZE_MODES = mapOf(
+            ResizeMode.Fit to AspectRatioFrameLayout.RESIZE_MODE_FIT,
+            ResizeMode.Fill to AspectRatioFrameLayout.RESIZE_MODE_FILL,
+            ResizeMode.Zoom to AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
+            ResizeMode.FixedWidth to AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH,
+            ResizeMode.FixedHeight to AspectRatioFrameLayout.RESIZE_MODE_FIXED_HEIGHT,
+        )
+        val REPEAT_MODES = mapOf(
+            RepeatMode.Off to Player.REPEAT_MODE_OFF,
+            RepeatMode.One to Player.REPEAT_MODE_ONE,
+            RepeatMode.All to Player.REPEAT_MODE_ALL,
+        )
+        val ORIENTATIONS = mapOf(
+            FullscreenOrientation.Auto to null,
+            FullscreenOrientation.Landscape to ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
+            FullscreenOrientation.Portrait to ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT,
+            FullscreenOrientation.Sensor to ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR,
+        )
+    }
+
     private fun dispatch(event: String, vararg args: Any) {
         mainThread.post { EventDispatcher.dispatchEvent(this, event, *args) }
     }
@@ -292,7 +355,8 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
             seekIncrementMs = seekIncrement * 1000L
             controlsTimeoutMs = controlsTimeout.toLong()
             gesturesEnabled = this@Media3Player.gesturesEnabled
-            zoomToFill = this@Media3Player.zoomToFill
+            resizeMode = this@Media3Player.resizeMode
+            fullscreenOrientation = ORIENTATIONS[this@Media3Player.fullscreenOrientation]
             chapters = this@Media3Player.chapters.toList()
         }
     }
