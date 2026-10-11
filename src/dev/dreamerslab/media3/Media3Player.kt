@@ -24,6 +24,7 @@ import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
@@ -81,7 +82,8 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
 
     private val activity: Activity = container.`$context`()
     private val http = DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true)
-    private val mediaSources = DefaultMediaSourceFactory(DefaultDataSource.Factory(activity, http))
+    private val network = DefaultDataSource.Factory(activity, http)
+    private val mediaSources = DefaultMediaSourceFactory(network)
     private val audioEffects = AudioEffects()
     private val renderers = object : DefaultRenderersFactory(activity) {
         override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioTrackPlaybackParams: Boolean): AudioSink =
@@ -116,6 +118,8 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     private var updatingQueue = false
     private var lastAddedId = ""
     private var positionUpdateInterval = 0
+    private var cacheSizeMb = 0
+    private var preloadSeconds = 0
     private var droppedFrames = 0
     private var isBuffering = false
     private val positionUpdates = object : Runnable {
@@ -309,6 +313,9 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
 
     @SimpleFunction(description = "Level of an equalizer band in decibels. Band starts at 1.")
     fun BandLevel(band: Int): Int = audioEffects.bandLevelDb(band - 1)
+
+    @SimpleFunction(description = "Deletes the media stored by the cache.")
+    fun ClearCache() = OfflineStorage.clearStreamCache()
 
     @SimpleFunction(description = "Jumps to the live edge of a live stream.")
     fun SeekToLiveEdge() = player.seekToDefaultPosition()
@@ -999,6 +1006,41 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         applyAudioMix()
     }
 
+    @SimpleProperty(
+        description = "Megabytes of streamed media kept on the device so it plays again without downloading. " +
+            "0 turns the cache off. The size can't change while the app runs once media was cached.",
+        category = PropertyCategory.ADVANCED
+    )
+    fun CacheSize(): Int = cacheSizeMb
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_NON_NEGATIVE_INTEGER, defaultValue = "0")
+    @SimpleProperty
+    fun CacheSize(megabytes: Int) {
+        cacheSizeMb = megabytes.coerceAtLeast(0)
+        updateDataSources()
+    }
+
+    @SimpleProperty(description = "Megabytes the cache currently uses on the device.")
+    fun CacheUsed(): Double = (OfflineStorage.streamCacheBytes * 100 / (1024 * 1024)) / 100.0
+
+    @SimpleProperty(
+        description = "Seconds of the next media in the queue to load in advance, so it starts without waiting. " +
+            "0 loads nothing in advance.",
+        category = PropertyCategory.BEHAVIOR
+    )
+    fun PreloadNext(): Int = preloadSeconds
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_NON_NEGATIVE_INTEGER, defaultValue = "0")
+    @SimpleProperty
+    fun PreloadNext(seconds: Int) {
+        preloadSeconds = seconds.coerceAtLeast(0)
+        player.preloadConfiguration = if (preloadSeconds > 0) {
+            ExoPlayer.PreloadConfiguration(preloadSeconds * 1_000_000L)
+        } else {
+            ExoPlayer.PreloadConfiguration.DEFAULT
+        }
+    }
+
     @SimpleProperty(description = "Number of media in the queue.")
     fun QueueLength(): Int = player.mediaItemCount
 
@@ -1369,6 +1411,17 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         in 4000..4999 -> "Decoder"
         in 6000..6999 -> "DRM"
         else -> "Other"
+    }
+
+    private fun updateDataSources() {
+        val cached = if (cacheSizeMb > 0) {
+            CacheDataSource.Factory()
+                .setCache(OfflineStorage.streamCache(activity, cacheSizeMb * 1024L * 1024L))
+                .setUpstreamDataSourceFactory(network)
+        } else {
+            network
+        }
+        mediaSources.setDataSourceFactory(cached)
     }
 
     private fun applyAudioMix() {
