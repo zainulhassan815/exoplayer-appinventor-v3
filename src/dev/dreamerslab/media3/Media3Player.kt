@@ -11,6 +11,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.ui.AspectRatioFrameLayout
 import com.google.appinventor.components.annotations.DesignerProperty
 import com.google.appinventor.components.annotations.Extension
@@ -30,6 +31,7 @@ import com.google.appinventor.components.runtime.OnResumeListener
 import dev.dreamerslab.media3.helpers.FullscreenOrientation
 import dev.dreamerslab.media3.helpers.RepeatMode
 import dev.dreamerslab.media3.helpers.ResizeMode
+import dev.dreamerslab.media3.helpers.SeekMode
 import dev.dreamerslab.media3.ui.Chapter
 import dev.dreamerslab.media3.ui.DEFAULT_ACCENT
 import dev.dreamerslab.media3.ui.PlayerUi
@@ -59,6 +61,9 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     private var gesturesEnabled = true
     private var resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
     private var fullscreenOrientation = FullscreenOrientation.Auto
+    private var autoplay = true
+    private var volume = 100
+    private var muted = false
 
     init {
         player.pauseAtEndOfMediaItems = true
@@ -86,10 +91,16 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     }
 
     @SimpleFunction(description = "Plays the media at the given url or asset name, replacing the queue.")
-    fun Play(source: String, title: String) {
-        player.setMediaItem(MediaItems.create(source, title))
+    fun Play(source: String, title: String) = PlayFrom(source, title, 0)
+
+    @SimpleFunction(
+        description = "Plays the media at the given url or asset name from the given position in milliseconds, " +
+            "replacing the queue."
+    )
+    fun PlayFrom(source: String, title: String, positionMs: Long) {
+        player.setMediaItem(MediaItems.create(source, title), positionMs)
         player.prepare()
-        player.play()
+        player.playWhenReady = autoplay
     }
 
     @SimpleFunction(description = "Adds the media at the given url or asset name to the end of the queue.")
@@ -108,14 +119,41 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         player.replaceMediaItem(index, MediaItems.withSubtitle(player.getMediaItemAt(index), source, language, label))
     }
 
+    @SimpleFunction(
+        description = "Plays only part of the most recently added media, from the start to the end position in " +
+            "milliseconds. An end of 0 plays until the end of the media."
+    )
+    fun ClipMedia(startMs: Long, endMs: Long) {
+        val index = player.mediaItemCount - 1
+        if (index < 0) return
+        player.addMediaItem(MediaItems.clipped(player.getMediaItemAt(index), startMs, endMs))
+        if (index == player.currentMediaItemIndex) player.seekToDefaultPosition(index + 1)
+        player.removeMediaItem(index)
+    }
+
     @SimpleFunction(description = "Resumes playback.")
-    fun Resume() = player.play()
+    fun Resume() {
+        if (player.playbackState == Player.STATE_IDLE) player.prepare()
+        player.play()
+    }
 
-    @SimpleFunction(description = "Pauses playback.")
-    fun Pause() = player.pause()
+    @SimpleFunction(description = "Stops playback and releases the media, keeping the queue. Resume plays it again.")
+    fun Stop() = player.stop()
 
-    @SimpleFunction(description = "Seeks to the given position in milliseconds.")
-    fun SeekTo(positionMs: Long) = player.seekTo(positionMs)
+    @SimpleFunction(description = "Plays the current media again from the start.")
+    fun Replay() {
+        player.seekTo(player.currentMediaItemIndex, 0)
+        Resume()
+    }
+
+    @SimpleFunction(description = "Plays the media at the given position in the queue. Index starts at 1.")
+    fun PlayAt(index: Int) = seekToItem("PlayAt", index, 0)
+
+    @SimpleFunction(
+        description = "Plays the media at the given position in the queue from the given position in milliseconds. " +
+            "Index starts at 1."
+    )
+    fun SeekToItem(index: Int, positionMs: Long) = seekToItem("SeekToItem", index, positionMs)
 
     @SimpleFunction(description = "Plays the next media in the queue.")
     fun Next() = player.seekToNextMediaItem()
@@ -242,6 +280,79 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         tracks.repeatMode = REPEAT_MODES.getValue(RepeatMode.fromUnderlyingValue(mode) ?: return)
     }
 
+    @SimpleProperty(description = "Shuffles the order the queue plays in.", category = PropertyCategory.BEHAVIOR)
+    fun Shuffle(): Boolean = player.shuffleModeEnabled
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "False")
+    @SimpleProperty
+    fun Shuffle(shuffle: Boolean) {
+        player.shuffleModeEnabled = shuffle
+    }
+
+    @SimpleProperty(description = "Starts playing as soon as media is played or added.", category = PropertyCategory.BEHAVIOR)
+    fun Autoplay(): Boolean = autoplay
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "True")
+    @SimpleProperty
+    fun Autoplay(autoplay: Boolean) {
+        this.autoplay = autoplay
+    }
+
+    @SimpleProperty(description = "Volume of the player, from 0 to 100.", category = PropertyCategory.BEHAVIOR)
+    fun Volume(): Int = volume
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_NON_NEGATIVE_INTEGER, defaultValue = "100")
+    @SimpleProperty
+    fun Volume(volume: Int) {
+        this.volume = volume.coerceIn(0, 100)
+        applyVolume()
+    }
+
+    @SimpleProperty(description = "Silences the player without changing its volume.", category = PropertyCategory.BEHAVIOR)
+    fun Muted(): Boolean = muted
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "False")
+    @SimpleProperty
+    fun Muted(muted: Boolean) {
+        this.muted = muted
+        applyVolume()
+    }
+
+    @SimpleProperty(
+        description = "Pitch of the audio, from 0.5 to 2. 1 is the original pitch.",
+        category = PropertyCategory.BEHAVIOR
+    )
+    fun Pitch(): Float = player.playbackParameters.pitch
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_NON_NEGATIVE_FLOAT, defaultValue = "1.0")
+    @SimpleProperty
+    fun Pitch(pitch: Float) {
+        player.playbackParameters = player.playbackParameters.withPitch(pitch.coerceIn(0.5f, 2f))
+    }
+
+    @SimpleProperty(description = "Skips silent parts of the audio.", category = PropertyCategory.BEHAVIOR)
+    fun SkipSilence(): Boolean = player.skipSilenceEnabled
+
+    @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "False")
+    @SimpleProperty
+    fun SkipSilence(skip: Boolean) {
+        player.skipSilenceEnabled = skip
+    }
+
+    @SimpleProperty(description = "How precisely SeekTo and the seek bar seek.", category = PropertyCategory.BEHAVIOR)
+    @Options(SeekMode::class)
+    fun SeekMode(): String = SEEK_MODES.entries.first { it.value == player.seekParameters }.key.toUnderlyingValue()
+
+    @DesignerProperty(
+        editorType = PropertyTypeConstants.PROPERTY_TYPE_CHOICES,
+        editorArgs = ["Exact", "Closest keyframe"],
+        defaultValue = "Exact"
+    )
+    @SimpleProperty
+    fun SeekMode(@Options(SeekMode::class) mode: String) {
+        player.setSeekParameters(SEEK_MODES.getValue(SeekMode.fromUnderlyingValue(mode) ?: return))
+    }
+
     @SimpleProperty(description = "Playback speed, from 0.25 to 2.", category = PropertyCategory.BEHAVIOR)
     fun PlaybackSpeed(): Float = tracks.speed
 
@@ -324,7 +435,25 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         player.release()
     }
 
+    private fun seekToItem(function: String, index: Int, positionMs: Long) {
+        if (index !in 1..player.mediaItemCount) {
+            reportError(function, ERROR_NOT_IN_QUEUE, "Index $index is not in the queue (1 to ${player.mediaItemCount}).")
+            return
+        }
+        player.seekTo(index - 1, positionMs)
+        Resume()
+    }
+
+    private fun reportError(function: String, errorNumber: Int, message: String) {
+        mainThread.post { form.ErrorOccurred(this, function, errorNumber, message) }
+    }
+
+    private fun applyVolume() {
+        player.volume = if (muted) 0f else volume / 100f
+    }
+
     private companion object {
+        const val ERROR_NOT_IN_QUEUE = 30101
         val RESIZE_MODES = mapOf(
             ResizeMode.Fit to AspectRatioFrameLayout.RESIZE_MODE_FIT,
             ResizeMode.Fill to AspectRatioFrameLayout.RESIZE_MODE_FILL,
@@ -336,6 +465,10 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
             RepeatMode.Off to Player.REPEAT_MODE_OFF,
             RepeatMode.One to Player.REPEAT_MODE_ONE,
             RepeatMode.All to Player.REPEAT_MODE_ALL,
+        )
+        val SEEK_MODES = mapOf(
+            SeekMode.Exact to SeekParameters.EXACT,
+            SeekMode.ClosestKeyframe to SeekParameters.CLOSEST_SYNC,
         )
         val ORIENTATIONS = mapOf(
             FullscreenOrientation.Auto to null,

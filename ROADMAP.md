@@ -14,13 +14,13 @@ Planned improvements to Media3Player, worked through in order. Items marked
 
 ## 2. Playback control
 
-- [ ] Repeat Off / One / All (replaces `Loop`) and shuffle
-- [ ] Volume and mute
-- [ ] Pitch and skip silence
-- [ ] Autoplay on or off, start position for `Play`
-- [ ] `Stop`, `Replay`, `PlayAt(index)`, seek to a position in another item
-- [ ] Clipping: play only a part of a media between start and end times
-- [ ] Seek mode: exact or nearest keyframe
+- [x] Repeat Off / One / All (replaces `Loop`) and shuffle
+- [x] Volume and mute
+- [x] Pitch and skip silence
+- [x] Autoplay on or off, start position for `Play`
+- [x] `Stop`, `Replay`, `PlayAt(index)`, seek to a position in another item
+- [x] Clipping: play only a part of a media between start and end times
+- [x] Seek mode: exact or nearest keyframe
 
 ## 3. Media sources and formats
 

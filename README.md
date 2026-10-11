@@ -33,23 +33,26 @@ as real AARs with their resources.
 | Functions | |
 |---|---|
 | `Create(arrangement)` | Shows the player inside the arrangement |
-| `Play(source, title)` | Plays media, replacing the queue |
+| `Play(source, title)` / `PlayFrom(source, title, positionMs)` | Plays media, replacing the queue |
 | `AddToQueue(source, title)` | Adds media to the end of the queue |
 | `AddSubtitle(source, language, label)` | Adds a subtitle file to the most recently added media |
+| `ClipMedia(startMs, endMs)` | Plays only part of the most recently added media |
 | `AddChapter(startSeconds, title)` / `ClearChapters()` | Chapters shown while scrubbing |
-| `Resume()` / `Pause()` / `SeekTo(positionMs)` | Playback control |
-| `Next()` / `Previous()` / `ClearQueue()` | Queue control |
+| `Resume()` / `Pause()` / `Stop()` / `Replay()` / `SeekTo(positionMs)` | Playback control |
+| `Next()` / `Previous()` / `PlayAt(index)` / `SeekToItem(index, positionMs)` / `ClearQueue()` | Queue control |
 | `EnterFullscreen()` / `ExitFullscreen()` | Fullscreen control |
 
 Events: `PlaybackStateChanged`, `IsPlayingChanged`, `MediaChanged`,
-`FullscreenChanged`, `PlayerError`.
+`FullscreenChanged`, `PlayerError`. An index outside the queue raises `Screen.ErrorOccurred`
+with error number 30101.
 
 Properties, grouped in the designer:
 
 - Appearance: `AccentColor`, `ResizeMode` (Fit, Fill, Zoom, Fixed width, Fixed height),
   `FullscreenOrientation` (Auto, Landscape, Portrait, Sensor)
 - Behavior: `SeekIncrement`, `ControlsTimeout`, `GesturesEnabled`, `RepeatMode`
-  (Off, One, All), `PlaybackSpeed`
+  (Off, One, All), `Shuffle`, `Autoplay`, `Volume`, `Muted`, `Pitch`, `SkipSilence`,
+  `SeekMode` (Exact, Closest keyframe), `PlaybackSpeed`
 - Read-only: `IsPlaying`, `IsFullscreen`, `Position`, `Duration`, `Title`
 
 ## Testing

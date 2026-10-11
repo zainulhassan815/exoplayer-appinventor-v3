@@ -63,7 +63,9 @@ internal class TrackSettings(private val player: ExoPlayer) : TrackChoices {
 
     override var speed: Float
         get() = player.playbackParameters.speed
-        set(value) = player.setPlaybackSpeed(value)
+        set(value) {
+            player.playbackParameters = player.playbackParameters.withSpeed(value)
+        }
 
     var repeatMode: Int
         get() = player.repeatMode

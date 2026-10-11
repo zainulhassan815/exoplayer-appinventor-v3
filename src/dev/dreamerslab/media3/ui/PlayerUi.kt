@@ -219,10 +219,12 @@ internal class PlayerUi(
 
     private val scrubbing = object : TimeBar.Listener {
         private var wasPlaying = false
+        private var seekParameters = SeekParameters.DEFAULT
 
         override fun onScrubStart() {
             removeCallbacks(hideControls)
             wasPlaying = player.playWhenReady
+            seekParameters = player.seekParameters
             player.setSeekParameters(SeekParameters.CLOSEST_SYNC)
             scrubPreview.visibility = VISIBLE
         }
@@ -237,7 +239,7 @@ internal class PlayerUi(
         }
 
         override fun onScrubStop(positionMs: Long) {
-            player.setSeekParameters(SeekParameters.DEFAULT)
+            player.setSeekParameters(seekParameters)
             player.seekTo(positionMs)
             player.playWhenReady = wasPlaying
             scrubPreview.visibility = INVISIBLE
@@ -381,6 +383,10 @@ internal class PlayerUi(
     override fun onIsPlayingChanged(isPlaying: Boolean) {
         playPause.icon = if (isPlaying) Icon.PAUSE else Icon.PLAY
         playPause.contentDescription = if (isPlaying) "Pause" else "Play"
+        if (isPlaying) {
+            endedOverlay.hide()
+            errorOverlay.hide()
+        }
         if (isPlaying) scheduleHide() else if (!locked && !boosting && !overlayShowing) setControlsVisible(true)
     }
 

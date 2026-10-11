@@ -1,6 +1,7 @@
 package dev.dreamerslab.media3
 
 import android.net.Uri
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
@@ -23,6 +24,16 @@ internal object MediaItems {
         val existing = item.localConfiguration?.subtitleConfigurations.orEmpty()
         return item.buildUpon().setSubtitleConfigurations(existing + subtitle).build()
     }
+
+    fun clipped(item: MediaItem, startMs: Long, endMs: Long): MediaItem =
+        item.buildUpon()
+            .setClippingConfiguration(
+                MediaItem.ClippingConfiguration.Builder()
+                    .setStartPositionMs(startMs.coerceAtLeast(0))
+                    .setEndPositionMs(if (endMs > 0) endMs else C.TIME_END_OF_SOURCE)
+                    .build()
+            )
+            .build()
 
     private fun resolve(source: String): Uri = when {
         "://" in source -> Uri.parse(source)
