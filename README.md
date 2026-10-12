@@ -132,6 +132,30 @@ Play asks apps to explain each foreground service type they declare in the Play 
 (App content → Foreground service permissions). Describe them as playing media in the
 background and downloading media for offline playback.
 
+## FAQ
+
+**Does it work in the AI Companion?** No. The Companion can't load the Media3 libraries the
+extension ships. Build an APK to test.
+
+**Can it play YouTube or Google Drive links?** No. A YouTube page isn't a media URL, and
+playing YouTube outside its official players is against YouTube's terms. A Drive share link
+opens a web page; use a direct download link to the file instead.
+
+**Can it cast to a TV, or play in picture-in-picture?** No. Casting needs Google Play
+Services, and picture-in-picture needs a setting on the screen's activity that extensions
+can't change.
+
+**Why can't I seek in some MKV files?** The file has no seek index (cues). That's a
+property of the file; remuxing it, for example with `ffmpeg -i in.mkv -c copy out.mkv`,
+adds one.
+
+**Why doesn't a video play while others do?** Codecs like HEVC 10-bit, AC-3/E-AC-3 and DTS
+depend on the phone's decoders. Check `PlayerError`: category Decoder or Format means the
+device can't decode that file.
+
+**Does it play live streams and internet radio?** Yes: HLS, DASH and RTSP live streams, and
+radio streams with their titles in `StreamTitleChanged`.
+
 ## Building
 
 Requires [Rush 2.2](https://github.com/zainulhassan815/rush-cli) or newer and JDK 17.
