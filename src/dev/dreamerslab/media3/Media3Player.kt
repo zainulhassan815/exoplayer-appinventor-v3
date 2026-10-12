@@ -24,6 +24,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
+import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.Util
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
@@ -104,6 +105,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     private val player = ExoPlayer.Builder(activity, renderers)
         .setMediaSourceFactory(mediaSources)
         .setAudioAttributes(AudioAttributes.DEFAULT, true)
+        .setDeviceVolumeControlEnabled(true)
         .setHandleAudioBecomingNoisy(true)
         .build()
     private val tracks = TrackSettings(player)
@@ -375,6 +377,12 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     @SimpleFunction(description = "How much of the media at the given url has downloaded, from 0 to 100.")
     fun DownloadProgress(source: String): Double =
         download(source)?.percentDownloaded?.takeIf { it >= 0 }?.toDouble() ?: 0.0
+
+    @SimpleFunction(description = "Turns the phone's media volume up by one step.")
+    fun IncreaseDeviceVolume() = player.increaseDeviceVolume(0)
+
+    @SimpleFunction(description = "Turns the phone's media volume down by one step.")
+    fun DecreaseDeviceVolume() = player.decreaseDeviceVolume(0)
 
     @SimpleFunction(description = "Deletes the media stored by the cache.")
     fun ClearCache() = OfflineStorage.clearStreamCache()
@@ -1147,6 +1155,30 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         }
     }
 
+    @SimpleProperty(
+        description = "The phone's media volume, shared by all apps, between DeviceMinVolume and DeviceMaxVolume. " +
+            "Volume sets only this player's volume."
+    )
+    fun DeviceVolume(): Int = player.deviceVolume
+
+    @SimpleProperty
+    fun DeviceVolume(volume: Int) {
+        val info = player.deviceInfo
+        player.setDeviceVolume(volume.coerceIn(info.minVolume, info.maxVolume), 0)
+    }
+
+    @SimpleProperty(description = "Lowest value of DeviceVolume.")
+    fun DeviceMinVolume(): Int = player.deviceInfo.minVolume
+
+    @SimpleProperty(description = "Highest value of DeviceVolume.")
+    fun DeviceMaxVolume(): Int = player.deviceInfo.maxVolume
+
+    @SimpleProperty(description = "Whether the phone's media volume is muted. Muted silences only this player.")
+    fun DeviceMuted(): Boolean = player.isDeviceMuted
+
+    @SimpleProperty
+    fun DeviceMuted(muted: Boolean) = player.setDeviceMuted(muted, 0)
+
     @SimpleProperty(description = "Number of media in the queue.")
     fun QueueLength(): Int = player.mediaItemCount
 
@@ -1322,6 +1354,19 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         dispatch("DownloadChanged", source, state, percent)
     }
 
+    @SimpleEvent(
+        description = "The subtitle on screen changed. Text holds its lines, or is empty when no subtitle shows. " +
+            "Useful to show subtitles your own way, for example with ShowControls off."
+    )
+    fun SubtitleChanged(text: String) {
+        dispatch("SubtitleChanged", text)
+    }
+
+    @SimpleEvent(description = "The phone's media volume changed, from this app or outside it.")
+    fun DeviceVolumeChanged(volume: Int, muted: Boolean) {
+        dispatch("DeviceVolumeChanged", volume, muted)
+    }
+
     @SimpleEvent(description = "CaptureFrame saved a video frame to the given path.")
     fun FrameCaptured(path: String) {
         dispatch("FrameCaptured", path)
@@ -1369,6 +1414,11 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     override fun onRenderedFirstFrame() = FirstFrameRendered()
 
     override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) = SpeedChanged(playbackParameters.speed)
+
+    override fun onCues(cueGroup: CueGroup) =
+        SubtitleChanged(cueGroup.cues.mapNotNull { it.text?.toString() }.joinToString("\n"))
+
+    override fun onDeviceVolumeChanged(volume: Int, muted: Boolean) = DeviceVolumeChanged(volume, muted)
 
     override fun onMetadata(metadata: Metadata) {
         var title = ""

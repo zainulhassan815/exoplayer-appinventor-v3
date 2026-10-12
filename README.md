@@ -53,6 +53,7 @@ as real AARs with their resources.
 | `Download(source, title)` / `RemoveDownload(source)` / `RemoveAllDownloads()` | Downloads media for offline playback |
 | `IsDownloaded(source)` / `DownloadProgress(source)` | Download status |
 | `ClearCache()` | Deletes cached media |
+| `IncreaseDeviceVolume()` / `DecreaseDeviceVolume()` | Changes the phone's media volume by one step |
 | `UseEqualizerPreset(name)` / `SetBandLevel(band, decibels)` / `BandLevel(band)` | Equalizer |
 | `SelectQuality(index)` / `SelectAudioTrack(index)` / `SelectSubtitle(index)` | Chooses from `VideoQualities`, `AudioTracks` and `SubtitleTracks` |
 | `AddChapter(startSeconds, title)` / `ClearChapters()` | Chapters shown while scrubbing |
@@ -65,7 +66,8 @@ as real AARs with their resources.
 
 Events: `PlaybackStateChanged`, `IsPlayingChanged`, `BufferingChanged`, `PositionChanged`,
 `MediaChanged`, `MetadataChanged`, `StreamTitleChanged`, `QueueChanged`, `TracksChanged`,
-`VideoSizeChanged`, `FirstFrameRendered`, `SpeedChanged`, `FullscreenChanged`, `DialogClosed`, `DownloadChanged`, `FrameCaptured`,
+`VideoSizeChanged`, `FirstFrameRendered`, `SpeedChanged`, `FullscreenChanged`, `DialogClosed`, `DownloadChanged`, `FrameCaptured`, `SubtitleChanged`,
+`DeviceVolumeChanged`,
 `PlayerError(message, errorCode, category)` with category Network, NotFound, Format, Decoder,
 DRM or Other. An index outside the queue raises `Screen.ErrorOccurred`
 with error number 30101, and one outside a track list with 30102.
@@ -92,7 +94,9 @@ Properties, grouped in the designer:
   `VideoQualities`, `AudioTracks`, `SubtitleTracks`, `IsDialogShowing`, `BufferedPosition`,
   `BufferedPercentage`, `VideoWidth`, `VideoHeight`, `VideoBitrate`, `DroppedFrames`,
   `BandwidthEstimate`, `EqualizerPresets`, `EqualizerPreset`, `EqualizerBands`,
-  `EqualizerMinLevel`, `EqualizerMaxLevel`, `CacheUsed`, `Downloads`
+  `EqualizerMinLevel`, `EqualizerMaxLevel`, `CacheUsed`, `Downloads`, `DeviceMinVolume`,
+  `DeviceMaxVolume`
+- Phone volume: `DeviceVolume`, `DeviceMuted`
 
 ### Several players
 
