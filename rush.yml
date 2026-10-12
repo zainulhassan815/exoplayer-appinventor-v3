@@ -9,9 +9,6 @@ min_sdk: 23
 homepage: https://github.com/zainulhassan815/exoplayer-appinventor-v3
 license: LICENSE
 
-authors:
-- Zain Ul Hassan
-
 kotlin:
   compiler_version: '2.4.20'
 
