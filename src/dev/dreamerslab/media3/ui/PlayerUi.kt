@@ -362,6 +362,7 @@ internal class PlayerUi(
             seekParameters = player.seekParameters
             player.setSeekParameters(SeekParameters.CLOSEST_SYNC)
             scrubPreview.visibility = VISIBLE
+            updateSpinner()
         }
 
         override fun onScrubMove(positionMs: Long) {
@@ -379,6 +380,7 @@ internal class PlayerUi(
             player.seekTo(positionMs)
             player.playWhenReady = wasPlaying
             scrubPreview.visibility = INVISIBLE
+            updateSpinner()
             scheduleHide()
         }
     }
@@ -598,7 +600,7 @@ internal class PlayerUi(
 
     override fun onPlaybackStateChanged(playbackState: Int) {
         val buffering = playbackState == Player.STATE_BUFFERING
-        spinner.fadeTo(buffering)
+        updateSpinner()
         playPause.visibility = if (buffering) INVISIBLE else VISIBLE
         if (playbackState == Player.STATE_ENDED) showEnded()
     }
@@ -657,6 +659,9 @@ internal class PlayerUi(
             updateArtworkVisibility()
         }, ContextCompat.getMainExecutor(activity))
     }
+
+    private fun updateSpinner() =
+        spinner.fadeTo(player.playbackState == Player.STATE_BUFFERING && !timeBar.isScrubbing)
 
     private fun loadThumbnails() {
         val request = ++thumbnailRequest
