@@ -4,8 +4,27 @@ A video and audio player extension for MIT App Inventor and App Inventor based
 platforms, built on [AndroidX Media3](https://developer.android.com/media/media3).
 
 The successor of [exoplayer-appinventor](https://github.com/zainulhassan815/exoplayer-appinventor),
-built with [Rush 2.0](https://github.com/zainulhassan815/rush-cli), which ships Media3
-as real AARs with their resources.
+built with [Rush](https://github.com/zainulhassan815/rush-cli), which ships Media3 as
+real AARs with their resources.
+
+## Getting started
+
+1. Download `dev.dreamerslab.media3.aix` from the
+   [latest release](https://github.com/zainulhassan815/exoplayer-appinventor-v3/releases/latest)
+   and import it in App Inventor (Palette → Extension → Import extension).
+2. Add an arrangement, for example a VerticalArrangement with Width *Fill parent* and a
+   fixed Height, and a **Media3Player** component.
+3. In `Screen1.Initialize`, call `Media3Player1.Create(VerticalArrangement1)`.
+4. Call `Play(source, title)`, and `AddToQueue(source, title)` for more media. Sources
+   are URLs or names of media assets uploaded to the project.
+5. Build an APK to try it. The AI Companion can't load the Media3 libraries the
+   extension ships, so the player doesn't work in it.
+
+Each release also has `Media3Sample.aia`, a ready-made project to import (My Projects →
+Import project), and `dev.dreamerslab.media3.md`, the documentation of every block.
+
+Requirements: Android 6.0 or newer (`CaptureFrame` needs Android 7.0). The extension
+adds about 12 MB to apps.
 
 ## Features
 
@@ -25,15 +44,7 @@ as real AARs with their resources.
 - Accent color, resize mode, fullscreen orientation, repeat mode and behavior
   configurable from the designer
 
-## Usage
-
-1. Add an arrangement (e.g. a VerticalArrangement with Width *Fill parent* and a
-   fixed Height) and a **Media3Player** component.
-2. In `Screen1.Initialize`, call `Media3Player1.Create(VerticalArrangement1)`.
-3. Call `Play(source, title)`, and `AddToQueue(source, title)` for more media.
-   Sources are URLs or names of media assets uploaded to the project.
-
-### Blocks
+## Blocks
 
 | Functions | |
 |---|---|
@@ -98,27 +109,36 @@ Properties, grouped in the designer:
   `DeviceMaxVolume`
 - Phone volume: `DeviceVolume`, `DeviceMuted`
 
-### Several players
+## Several players
 
 Players pause when other audio starts, including another player in the app, as Android
 media players should, so starting one pauses the others. Turn `AudioFocus` off on players
 that should play on their own. Muted players never pause others or get paused.
 
-## Testing
+## Publishing on Google Play
 
-Build an APK to test the extension. The AI Companion can't load the Media3 libraries
-and resources the extension ships, so the player doesn't work in it.
+For `BackgroundPlayback` and `Download`, the extension declares two foreground services
+in every app that uses it: media playback and data sync, with their permissions. Google
+Play asks apps to explain each foreground service type they declare in the Play Console
+(App content → Foreground service permissions). Describe them as playing media in the
+background and downloading media for offline playback.
 
 ## Building
 
-Requires [Rush 2.0](https://github.com/zainulhassan815/rush-cli) and JDK 17+.
+Requires [Rush 2.2](https://github.com/zainulhassan815/rush-cli) or newer and JDK 17.
 
 ```sh
 rush build
+python3 samples/package.py
 ```
 
-The extension is generated in the `out` directory. `design/player-mockup.html` is
-the interactive mockup the player UI is built from.
+The extension and its block documentation are generated in the `out` directory, and the
+second command packs the sample project with it. `design/player-mockup.html` is the
+interactive mockup the player UI is built from.
+
+GitHub Actions builds every push. To release, update `version` in `rush.yml`, commit, and
+push a tag with the same version, like `v3.0.0`: the release is published with the
+extension, its documentation and the sample project.
 
 ## License
 
