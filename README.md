@@ -7,6 +7,15 @@ The successor of [exoplayer-appinventor](https://github.com/zainulhassan815/exop
 built with [Rush](https://github.com/zainulhassan815/rush-cli), which ships Media3 as
 real AARs with their resources.
 
+<p>
+  <img src="docs/screenshots/fullscreen.jpg" alt="Fullscreen playback with controls" width="49%">
+  <img src="docs/screenshots/settings.jpg" alt="Settings sheet with quality, speed, subtitles and audio track" width="49%">
+</p>
+<p>
+  <img src="docs/screenshots/inline.jpg" alt="Player inside an arrangement" width="32%">
+  <img src="docs/screenshots/thumbnails.jpg" alt="Thumbnail preview and chapter title while scrubbing" width="32%">
+</p>
+
 ## Getting started
 
 1. Download `dev.dreamerslab.media3.aix` from the
