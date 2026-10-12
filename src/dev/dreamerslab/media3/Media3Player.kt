@@ -101,7 +101,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
                 .setEnableFloatOutput(enableFloatOutput)
                 .setAudioProcessors(arrayOf(audioEffects.channelMixer))
                 .build()
-    }
+    }.setEnableDecoderFallback(true)
     private val player = ExoPlayer.Builder(activity, renderers)
         .setMediaSourceFactory(mediaSources)
         .setAudioAttributes(AudioAttributes.DEFAULT, true)
