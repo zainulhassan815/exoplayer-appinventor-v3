@@ -66,6 +66,7 @@ adds about 12 MB to apps.
 | `SetThumbnailTrack(vttUrl)` | Shows thumbnails from a WebVTT thumbnail track (like `storyboard.vtt`) while scrubbing the most recently added media |
 | `SetThumbnails(spriteUrl, columns, rows, intervalSeconds)` | Shows thumbnails from a single sprite sheet grid while scrubbing the most recently added media |
 | `SetDrm(scheme, licenseUrl, headers)` | Plays the most recently added media with Widevine, ClearKey or PlayReady DRM |
+| `SetClearKeys(keys)` | Plays the most recently added media with ClearKey DRM from known keys (key ID → key, in hex), without a license server |
 | `SetMediaType(type)` | Sets the format (HLS, DASH, SmoothStreaming, RTSP, Progressive) of the most recently added media |
 | `SetMetadata(artist, description, artworkUrl)` | Sets details of the most recently added media |
 | `SetHeader(name, value)` / `ClearHeaders()` | HTTP headers sent with every media request |
@@ -90,7 +91,7 @@ Events: `PlaybackStateChanged`, `IsPlayingChanged`, `BufferingChanged`, `Positio
 `DeviceVolumeChanged`,
 `PlayerError(message, errorCode, category)` with category Network, NotFound, Format, Decoder,
 DRM or Other. An index outside the queue raises `Screen.ErrorOccurred`
-with error number 30101, and one outside a track list with 30102.
+with error number 30101, one outside a track list with 30102, and a malformed ClearKey key with 30105.
 
 Properties, grouped in the designer:
 

@@ -35,6 +35,7 @@ import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
+import androidx.media3.exoplayer.drm.DefaultDrmSessionManagerProvider
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadRequest
@@ -93,7 +94,9 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     private val activity: Activity = container.`$context`()
     private val http = DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true)
     private val network = DefaultDataSource.Factory(activity, http)
+    private val drmSessions = DefaultDrmSessionManagerProvider()
     private val mediaSources = DefaultMediaSourceFactory(network)
+        .setDrmSessionManagerProvider { ClearKeys.sessionManager(it) ?: drmSessions.get(it) }
     private val audioEffects = AudioEffects()
     private val renderers = object : DefaultRenderersFactory(activity) {
         override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioTrackPlaybackParams: Boolean): AudioSink =
@@ -260,6 +263,17 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         val uuid = DRM_SCHEMES.getValue(DrmScheme.fromUnderlyingValue(scheme) ?: return)
         val requestHeaders = headers.entries.associate { (name, value) -> name.toString() to value.toString() }
         updateLastAdded { MediaItems.withDrm(it, uuid, licenseUrl, requestHeaders) }
+    }
+
+    @SimpleFunction(
+        description = "Plays the most recently added media with ClearKey DRM using known keys, without a license " +
+            "server. Keys is a dictionary of key IDs to keys, each 32 hex digits."
+    )
+    fun SetClearKeys(keys: YailDictionary) {
+        val hexKeys = keys.entries.associate { (kid, key) -> kid.toString() to key.toString() }
+        val license = runCatching { ClearKeys.license(hexKeys) }
+            .getOrElse { return reportError("SetClearKeys", ERROR_CLEAR_KEYS, it.message.orEmpty()) }
+        updateLastAdded { ClearKeys.withLicense(it, license) }
     }
 
     @SimpleFunction(
@@ -1646,6 +1660,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         const val ERROR_NOT_IN_LIST = 30102
         const val ERROR_CAPTURE = 30103
         const val ERROR_THUMBNAILS = 30104
+        const val ERROR_CLEAR_KEYS = 30105
         val CAPTION_EDGES = mapOf(
             SubtitleEdge.None to CaptionStyleCompat.EDGE_TYPE_NONE,
             SubtitleEdge.Outline to CaptionStyleCompat.EDGE_TYPE_OUTLINE,
