@@ -65,6 +65,7 @@ import com.google.appinventor.components.runtime.HVArrangement
 import com.google.appinventor.components.runtime.OnDestroyListener
 import com.google.appinventor.components.runtime.OnPauseListener
 import com.google.appinventor.components.runtime.OnResumeListener
+import com.google.appinventor.components.runtime.util.OnInitializeListener
 import com.google.appinventor.components.runtime.util.YailDictionary
 import com.google.appinventor.components.runtime.util.YailList
 import dev.dreamerslab.media3.helpers.DrmScheme
@@ -89,7 +90,7 @@ import java.io.File
     icon = "icon.png"
 )
 class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(container.`$form`()),
-    OnPauseListener, OnResumeListener, OnDestroyListener, Player.Listener {
+    OnInitializeListener, OnPauseListener, OnResumeListener, OnDestroyListener, Player.Listener {
 
     private val activity: Activity = container.`$context`()
     private val http = DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true)
@@ -116,6 +117,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     private var ui: PlayerUi? = null
     private var resumeOnForeground = false
     private val mainThread = Handler(Looper.getMainLooper())
+    private val eventsBeforeInitialize = ArrayDeque<() -> Unit>()
 
     private var accentColor = DEFAULT_ACCENT
     private var seekIncrement = 10
@@ -175,6 +177,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
                 droppedFrames += count
             }
         })
+        form.registerForOnInitialize(this)
         form.registerForOnPause(this)
         form.registerForOnResume(this)
         form.registerForOnDestroy(this)
@@ -1469,6 +1472,12 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         if (mediaItem != null && !updatingQueue) MediaChanged(player.currentMediaItemIndex + 1, mediaItem.mediaMetadata.title?.toString() ?: "")
     }
 
+    override fun onInitialize() {
+        mainThread.post {
+            while (eventsBeforeInitialize.isNotEmpty()) eventsBeforeInitialize.removeFirst()()
+        }
+    }
+
     override fun onPause() {
         if (session != null) return
         resumeOnForeground = player.playWhenReady
@@ -1585,7 +1594,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     }
 
     private fun reportError(function: String, errorNumber: Int, message: String) {
-        mainThread.post { form.ErrorOccurred(this, function, errorNumber, message) }
+        postEvent("ErrorOccurred") { form.ErrorOccurred(this, function, errorNumber, message) }
     }
 
     private fun errorCategory(code: Int): String = when (code) {
@@ -1715,7 +1724,14 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     }
 
     private fun dispatch(event: String, vararg args: Any) {
-        mainThread.post { EventDispatcher.dispatchEvent(this, event, *args) }
+        postEvent(event) { EventDispatcher.dispatchEvent(this, event, *args) }
+    }
+
+    private fun postEvent(event: String, fire: () -> Unit) {
+        mainThread.post {
+            if (eventsBeforeInitialize.isEmpty() && form.canDispatchEvent(this, event)) fire()
+            else eventsBeforeInitialize.addLast(fire)
+        }
     }
 
     private fun applySettings() {
