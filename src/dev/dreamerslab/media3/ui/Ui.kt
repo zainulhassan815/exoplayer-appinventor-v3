@@ -1,5 +1,6 @@
 package dev.dreamerslab.media3.ui
 
+import android.R
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Color
@@ -11,10 +12,14 @@ import android.graphics.drawable.ShapeDrawable
 import android.graphics.drawable.shapes.OvalShape
 import android.util.TypedValue
 import android.view.View
+import android.view.Window
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import kotlin.math.roundToInt
 
 internal const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
@@ -53,7 +58,12 @@ internal fun verticalGradient(top: Int, bottom: Int): GradientDrawable =
     GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(top, bottom))
 
 internal fun ripple(mask: Drawable, content: Drawable? = null): RippleDrawable =
-    RippleDrawable(ColorStateList.valueOf(0x33FFFFFF), content, mask)
+    RippleDrawable(RIPPLE_COLORS, content, mask)
+
+private val RIPPLE_COLORS = ColorStateList(
+    arrayOf(intArrayOf(R.attr.state_focused), intArrayOf()),
+    intArrayOf(0x73FFFFFF, 0x33FFFFFF),
+)
 
 internal fun ovalRipple(content: Drawable? = null): RippleDrawable = ripple(ShapeDrawable(OvalShape()), content)
 
@@ -78,6 +88,17 @@ internal fun <T : ViewGroup.MarginLayoutParams> T.margins(start: Int = 0, top: I
         marginEnd = end
         bottomMargin = bottom
     }
+
+internal fun Window.hideSystemBars() {
+    WindowCompat.getInsetsController(this, decorView).apply {
+        systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        hide(WindowInsetsCompat.Type.systemBars())
+    }
+}
+
+internal fun Window.showSystemBars() {
+    WindowCompat.getInsetsController(this, decorView).show(WindowInsetsCompat.Type.systemBars())
+}
 
 internal fun View.fadeTo(visible: Boolean, duration: Long = 200) {
     animate().cancel()

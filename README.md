@@ -41,6 +41,8 @@ adds about 12 MB to apps.
   previous / next, ±10s, speed chip, subtitles and settings
 - Gestures: double tap to seek, hold for 2× speed, pinch to zoom, swipe for brightness
   and volume in fullscreen, each of which can be turned off
+- D-pad and remote navigation: every control and the seek bar take focus, and the first
+  key shows hidden controls
 - Fullscreen with landscape or portrait orientation, matching the video
 - Settings sheet: quality, playback speed, subtitles, audio track, zoom and loop
 - Downloads for offline playback, a disk cache for streams and preloading of the next media

@@ -17,6 +17,7 @@ import android.text.Spanned
 import android.text.TextUtils
 import android.text.style.ForegroundColorSpan
 import android.view.GestureDetector
+import android.view.KeyEvent
 import android.view.PixelCopy
 import android.view.ScaleGestureDetector
 import android.view.SurfaceView
@@ -256,6 +257,7 @@ internal class PlayerUi(
 
     private val time = activity.text(12f).apply {
         setOnClickListener { if (player.isCurrentMediaItemLive) player.seekToDefaultPosition() }
+        isFocusable = false
     }
     private val speedChip = SpeedChip(activity).apply { setOnClickListener { openSettings(SettingsSheet.Page.SPEED) } }
     private val fullscreenButton = IconButton(activity, Icon.FULLSCREEN, "Fullscreen").apply {
@@ -325,11 +327,8 @@ internal class PlayerUi(
         setOnClickListener { unlock() }
     }
 
-    private val sheet = SettingsSheet(activity.findViewById(android.R.id.content), this).apply {
-        onDismiss = {
-            if (!isFullscreen && !isInDialog) back.disable()
-            scheduleHide()
-        }
+    private val sheet = SettingsSheet(activity, this).apply {
+        onDismiss = { scheduleHide() }
     }
     private val fullscreen = Fullscreen(activity, this)
     private val dialog = PlayerDialog(activity, this, onBackdropTap = { closeDialog() })
@@ -383,6 +382,8 @@ internal class PlayerUi(
             updateSpinner()
             scheduleHide()
         }
+
+        override fun onStep(forward: Boolean) = seekBy(if (forward) seekIncrementMs else -seekIncrementMs)
     }
 
     private val gestures = GestureDetector(activity, object : GestureDetector.SimpleOnGestureListener() {
@@ -460,6 +461,8 @@ internal class PlayerUi(
 
     init {
         setBackgroundColor(Color.BLACK)
+        isFocusable = true
+        descendantFocusability = FOCUS_AFTER_DESCENDANTS
         playerView.subtitleView?.setStyle(captionStyle)
         addView(playerView, frame(MATCH, MATCH))
         addView(artwork, frame(MATCH, MATCH))
@@ -481,6 +484,21 @@ internal class PlayerUi(
         applyAccent()
         syncWithPlayer()
         setControlsVisible(true)
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (back.intercepts(event)) return true
+        if (event.keyCode in NAVIGATION_KEYS && controlsEnabled && !locked) {
+            if (!controlsVisible) {
+                if (event.action == KeyEvent.ACTION_DOWN) {
+                    setControlsVisible(true)
+                    playPause.requestFocus()
+                }
+                return true
+            }
+            scheduleHide()
+        }
+        return super.dispatchKeyEvent(event)
     }
 
     fun enterFullscreen() {
@@ -542,7 +560,7 @@ internal class PlayerUi(
     fun release() {
         closeDialog()
         exitFullscreen()
-        sheet.dismiss()
+        sheet.dismiss(animate = false)
         endedOverlay.hide()
         player.removeListener(this)
         playerView.player = null
@@ -734,7 +752,9 @@ internal class PlayerUi(
     private fun updateProgress() {
         val duration = player.duration.takeIf { it != C.TIME_UNSET } ?: 0L
         timeBar.update(player.currentPosition, player.bufferedPosition, duration)
-        time.text = if (player.isCurrentMediaItemLive) liveTime() else SpannableStringBuilder(formatTime(player.currentPosition)).apply {
+        val live = player.isCurrentMediaItemLive
+        time.isFocusable = live
+        time.text = if (live) liveTime() else SpannableStringBuilder(formatTime(player.currentPosition)).apply {
             val start = length
             append(" / ")
             append(if (showRemainingTime) "-" + formatTime((duration - player.currentPosition).coerceAtLeast(0)) else formatTime(duration))
@@ -867,13 +887,11 @@ internal class PlayerUi(
 
     private fun openSettings(page: SettingsSheet.Page) {
         removeCallbacks(hideControls)
-        if (!isFullscreen && !isInDialog) back.enable(::handleBack)
         sheet.show(page, side = isFullscreen)
     }
 
     private fun handleBack() {
         when {
-            sheet.isShowing -> sheet.dismiss()
             isFullscreen -> exitFullscreen()
             else -> closeDialog()
         }
@@ -986,3 +1004,12 @@ internal class PlayerUi(
             else -> "Something went wrong while playing."
         }
 }
+
+private val NAVIGATION_KEYS = setOf(
+    KeyEvent.KEYCODE_DPAD_UP,
+    KeyEvent.KEYCODE_DPAD_DOWN,
+    KeyEvent.KEYCODE_DPAD_LEFT,
+    KeyEvent.KEYCODE_DPAD_RIGHT,
+    KeyEvent.KEYCODE_DPAD_CENTER,
+    KeyEvent.KEYCODE_ENTER,
+)

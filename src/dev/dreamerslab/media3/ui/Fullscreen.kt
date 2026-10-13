@@ -10,9 +10,6 @@ import android.view.ViewGroup
 import android.window.OnBackInvokedCallback
 import android.window.OnBackInvokedDispatcher
 import android.widget.FrameLayout
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 
 internal class Detached(private val view: View) {
     private var parent: ViewGroup? = null
@@ -25,24 +22,34 @@ internal class Detached(private val view: View) {
     fun into(target: ViewGroup, targetParams: ViewGroup.LayoutParams) {
         if (isDetached) return
         val currentParent = view.parent as? ViewGroup ?: return
-        parent = currentParent
-        index = currentParent.indexOfChild(view)
-        params = view.layoutParams
-        placeholder = View(view.context).apply { setBackgroundColor(0xFF000000.toInt()) }
-        currentParent.removeView(view)
-        currentParent.addView(placeholder, index, ViewGroup.LayoutParams(params?.width ?: MATCH, view.height.takeIf { it > 0 } ?: WRAP))
-        target.addView(view, targetParams)
+        keepingFocus {
+            parent = currentParent
+            index = currentParent.indexOfChild(view)
+            params = view.layoutParams
+            placeholder = View(view.context).apply { setBackgroundColor(0xFF000000.toInt()) }
+            currentParent.removeView(view)
+            currentParent.addView(placeholder, index, ViewGroup.LayoutParams(params?.width ?: MATCH, view.height.takeIf { it > 0 } ?: WRAP))
+            target.addView(view, targetParams)
+        }
     }
 
     fun restore() {
         if (!isDetached) return
-        (view.parent as? ViewGroup)?.removeView(view)
-        parent?.let { original ->
-            original.removeView(placeholder)
-            original.addView(view, index, params)
+        keepingFocus {
+            (view.parent as? ViewGroup)?.removeView(view)
+            parent?.let { original ->
+                original.removeView(placeholder)
+                original.addView(view, index, params)
+            }
+            placeholder = null
+            parent = null
         }
-        placeholder = null
-        parent = null
+    }
+
+    private fun keepingFocus(move: () -> Unit) {
+        val focused = view.findFocus()
+        move()
+        focused?.requestFocus()
     }
 }
 
@@ -59,10 +66,7 @@ internal class Fullscreen(private val activity: Activity, view: View) {
         detached.into(content, FrameLayout.LayoutParams(MATCH, MATCH))
         orientation = activity.requestedOrientation
         activity.requestedOrientation = requestedOrientation
-        systemBars().apply {
-            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            hide(WindowInsetsCompat.Type.systemBars())
-        }
+        activity.window.hideSystemBars()
         isActive = true
     }
 
@@ -70,11 +74,9 @@ internal class Fullscreen(private val activity: Activity, view: View) {
         if (!isActive) return
         detached.restore()
         activity.requestedOrientation = orientation
-        systemBars().show(WindowInsetsCompat.Type.systemBars())
+        activity.window.showSystemBars()
         isActive = false
     }
-
-    private fun systemBars() = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
 }
 
 internal class PlayerDialog(activity: Activity, view: View, private val onBackdropTap: () -> Unit) {
@@ -104,34 +106,35 @@ internal class PlayerDialog(activity: Activity, view: View, private val onBackdr
 }
 
 internal class BackInterceptor(private val activity: Activity, private val view: View) {
-    private var enabled = false
+    private var onBack: (() -> Unit)? = null
     private var platformCallback: Any? = null
 
     fun enable(onBack: () -> Unit) {
-        if (enabled) return
-        enabled = true
+        if (this.onBack != null) return
+        this.onBack = onBack
         if (Build.VERSION.SDK_INT >= 33) {
             platformCallback = OnBackInvokedCallback { onBack() }.also {
                 activity.onBackInvokedDispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_OVERLAY, it)
             }
         }
         view.isFocusableInTouchMode = true
-        view.requestFocus()
-        view.setOnKeyListener { _, keyCode, event ->
-            if (keyCode != KeyEvent.KEYCODE_BACK) return@setOnKeyListener false
-            if (event.action == KeyEvent.ACTION_UP) onBack()
-            true
-        }
+        if (view.isInTouchMode) view.requestFocus()
+    }
+
+    fun intercepts(event: KeyEvent): Boolean {
+        val onBack = onBack ?: return false
+        if (event.keyCode != KeyEvent.KEYCODE_BACK) return false
+        if (event.action == KeyEvent.ACTION_UP) onBack()
+        return true
     }
 
     fun disable() {
-        if (!enabled) return
-        enabled = false
+        if (onBack == null) return
+        onBack = null
         if (Build.VERSION.SDK_INT >= 33) {
             (platformCallback as? OnBackInvokedCallback)?.let { activity.onBackInvokedDispatcher.unregisterOnBackInvokedCallback(it) }
         }
         platformCallback = null
-        view.setOnKeyListener(null)
         view.isFocusableInTouchMode = false
     }
 }

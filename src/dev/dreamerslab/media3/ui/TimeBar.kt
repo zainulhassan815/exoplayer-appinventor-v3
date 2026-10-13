@@ -3,7 +3,9 @@ package dev.dreamerslab.media3.ui
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.RectF
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 
@@ -13,6 +15,7 @@ internal class TimeBar(context: Context) : View(context) {
         fun onScrubStart()
         fun onScrubMove(positionMs: Long)
         fun onScrubStop(positionMs: Long)
+        fun onStep(forward: Boolean)
     }
 
     var listener: Listener? = null
@@ -63,6 +66,7 @@ internal class TimeBar(context: Context) : View(context) {
 
     init {
         accent = DEFAULT_ACCENT
+        isFocusable = true
     }
 
     fun update(positionMs: Long, bufferedMs: Long, durationMs: Long) {
@@ -95,7 +99,7 @@ internal class TimeBar(context: Context) : View(context) {
             canvas.drawRect(x - markerWidth / 2, center - radius, x + markerWidth / 2, center + radius, markerPaint)
         }
         val thumbX = xOf(position)
-        if (isScrubbing) canvas.drawCircle(thumbX, center, dp(14).toFloat(), haloPaint)
+        if (isScrubbing || isFocused) canvas.drawCircle(thumbX, center, dp(14).toFloat(), haloPaint)
         canvas.drawCircle(thumbX, center, dp(if (isScrubbing) 8 else 6).toFloat(), thumbPaint)
     }
 
@@ -120,6 +124,22 @@ internal class TimeBar(context: Context) : View(context) {
         }
         invalidate()
         return true
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        val forward = when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_RIGHT -> true
+            KeyEvent.KEYCODE_DPAD_LEFT -> false
+            else -> return super.onKeyDown(keyCode, event)
+        }
+        if (duration <= 0) return false
+        listener?.onStep(forward)
+        return true
+    }
+
+    override fun onFocusChanged(gainFocus: Boolean, direction: Int, previouslyFocusedRect: Rect?) {
+        super.onFocusChanged(gainFocus, direction, previouslyFocusedRect)
+        invalidate()
     }
 
     private val start get() = paddingStart + dp(8).toFloat()

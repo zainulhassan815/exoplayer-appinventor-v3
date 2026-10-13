@@ -1,8 +1,10 @@
 package dev.dreamerslab.media3.ui
 
+import android.R
+import android.app.Activity
+import android.app.Dialog
 import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -29,7 +31,7 @@ internal interface PlaybackSettings : TrackChoices {
 
 internal val SPEEDS = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f)
 
-internal class SettingsSheet(private val host: ViewGroup, private val settings: PlaybackSettings) {
+internal class SettingsSheet(activity: Activity, private val settings: PlaybackSettings) {
 
     enum class Page { MAIN, QUALITY, SPEED, SUBTITLES, AUDIO }
 
@@ -37,7 +39,7 @@ internal class SettingsSheet(private val host: ViewGroup, private val settings: 
 
     var onDismiss: () -> Unit = {}
 
-    private val context = host.context
+    private val context = activity
     private val content = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     private val panel = ScrollView(context).apply {
         isVerticalScrollBarEnabled = false
@@ -45,13 +47,17 @@ internal class SettingsSheet(private val host: ViewGroup, private val settings: 
     }
     private val scrim = FrameLayout(context).apply {
         setBackgroundColor(0x66000000)
-        isClickable = true
         setOnClickListener { dismiss() }
+        isFocusable = false
         addView(panel)
+    }
+    private val dialog = Dialog(activity, R.style.Theme_Translucent_NoTitleBar).apply {
+        setContentView(scrim)
+        setOnDismissListener { onDismiss() }
     }
     private var side = false
 
-    val isShowing: Boolean get() = scrim.parent != null
+    val isShowing: Boolean get() = dialog.isShowing
 
     fun show(page: Page, side: Boolean) {
         this.side = side
@@ -65,7 +71,9 @@ internal class SettingsSheet(private val host: ViewGroup, private val settings: 
         val radius = context.dp(18).toFloat()
         panel.background = if (side) rounded(SURFACE, radius, 0f, 0f, radius) else rounded(SURFACE, radius, radius, 0f, 0f)
         panel.setOnClickListener {}
-        host.addView(scrim, frame(MATCH, MATCH))
+        panel.isFocusable = false
+        dialog.show()
+        if (side) dialog.window?.hideSystemBars()
         scrim.alpha = 0f
         scrim.animate().alpha(1f).setDuration(200)
         panel.post {
@@ -74,14 +82,15 @@ internal class SettingsSheet(private val host: ViewGroup, private val settings: 
         }
     }
 
-    fun dismiss() {
+    fun dismiss(animate: Boolean = true) {
         if (!isShowing) return
+        if (!animate) {
+            dialog.dismiss()
+            return
+        }
         val exit = panel.animate().setDuration(200)
         if (side) exit.translationX(panel.width.toFloat()) else exit.translationY(panel.height.toFloat())
-        scrim.animate().alpha(0f).setDuration(200).withEndAction {
-            host.removeView(scrim)
-            onDismiss()
-        }
+        scrim.animate().alpha(0f).setDuration(200).withEndAction { dialog.dismiss() }
     }
 
     private fun render(page: Page) {
@@ -95,6 +104,7 @@ internal class SettingsSheet(private val host: ViewGroup, private val settings: 
             Page.AUDIO -> renderChoices("Audio track", settings.audioTracks)
             Page.SPEED -> renderSpeeds()
         }
+        if (isShowing && !content.isInTouchMode) content.requestFocus()
     }
 
     private fun renderMain() {
