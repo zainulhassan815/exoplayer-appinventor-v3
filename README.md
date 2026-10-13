@@ -161,7 +161,7 @@ radio streams with their titles in `StreamTitleChanged`.
 
 ## Building
 
-Requires [Rush 2.2](https://github.com/zainulhassan815/rush-cli) or newer and JDK 17.
+Requires [Rush 2.5](https://github.com/zainulhassan815/rush-cli) or newer and JDK 17.
 
 ```sh
 rush build
