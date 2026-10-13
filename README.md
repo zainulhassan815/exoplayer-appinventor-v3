@@ -178,4 +178,6 @@ extension, its documentation and the sample project.
 
 ## License
 
-[GPL-2.0](LICENSE)
+[MPL-2.0](LICENSE). Use the extension in any app, free or commercial, and keep your
+app's code to yourself. If you change the extension's own files and distribute them,
+share those changes under the same license.
