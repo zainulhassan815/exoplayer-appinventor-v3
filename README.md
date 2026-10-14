@@ -89,7 +89,7 @@ adds about 12 MB to apps.
 
 Events: `PlaybackStateChanged`, `IsPlayingChanged`, `BufferingChanged`, `PositionChanged`,
 `MediaChanged`, `MetadataChanged`, `StreamTitleChanged`, `QueueChanged`, `TracksChanged`,
-`VideoSizeChanged`, `FirstFrameRendered`, `SpeedChanged`, `FullscreenChanged`, `DialogClosed`, `DownloadChanged`, `FrameCaptured`, `SubtitleChanged`,
+`VideoSizeChanged`, `FirstFrameRendered`, `SpeedChanged`, `RepeatModeChanged`, `ShuffleModeEnabledChanged`, `FullscreenChanged`, `DialogClosed`, `DownloadChanged`, `FrameCaptured`, `SubtitleChanged`,
 `DeviceVolumeChanged`,
 `PlayerError(message, errorCode, category)` with category Network, NotFound, Format, Decoder,
 DRM or Other. An index outside the queue raises `Screen.ErrorOccurred`

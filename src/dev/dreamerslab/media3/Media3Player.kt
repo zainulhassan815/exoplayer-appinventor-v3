@@ -798,7 +798,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
 
     @SimpleProperty(description = "Whether the current media or the whole queue repeats.", category = PropertyCategory.BEHAVIOR)
     @Options(RepeatMode::class)
-    fun RepeatMode(): String = REPEAT_MODES.entries.first { it.value == tracks.repeatMode }.key.toUnderlyingValue()
+    fun RepeatMode(): String = repeatModeName(tracks.repeatMode)
 
     @DesignerProperty(
         editorType = PropertyTypeConstants.PROPERTY_TYPE_CHOICES,
@@ -1341,6 +1341,16 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         dispatch("SpeedChanged", speed)
     }
 
+    @SimpleEvent(description = "The repeat mode changed, from blocks or from the loop setting in the player.")
+    fun RepeatModeChanged(@Options(RepeatMode::class) mode: String) {
+        dispatch("RepeatModeChanged", mode)
+    }
+
+    @SimpleEvent(description = "Shuffle was turned on or off.")
+    fun ShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+        dispatch("ShuffleModeEnabledChanged", shuffleModeEnabled)
+    }
+
     @SimpleEvent(description = "The title or artist of the current media changed.")
     fun MetadataChanged(title: String, artist: String) {
         dispatch("MetadataChanged", title, artist)
@@ -1417,6 +1427,8 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         PlaybackStateChanged(playbackStateName(playbackState))
     }
 
+    private fun repeatModeName(repeatMode: Int) = REPEAT_MODES.entries.first { it.value == repeatMode }.key.toUnderlyingValue()
+
     private fun playbackStateName(playbackState: Int) = when (playbackState) {
         Player.STATE_BUFFERING -> "BUFFERING"
         Player.STATE_READY -> "READY"
@@ -1440,6 +1452,10 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     override fun onRenderedFirstFrame() = FirstFrameRendered()
 
     override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) = SpeedChanged(playbackParameters.speed)
+
+    override fun onRepeatModeChanged(repeatMode: Int) = RepeatModeChanged(repeatModeName(repeatMode))
+
+    override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) = ShuffleModeEnabledChanged(shuffleModeEnabled)
 
     override fun onCues(cueGroup: CueGroup) =
         SubtitleChanged(cueGroup.cues.mapNotNull { it.text?.toString() }.joinToString("\n"))
