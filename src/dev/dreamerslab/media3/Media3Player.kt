@@ -256,6 +256,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     )
     fun SetMediaItems(mediaItems: YailList) {
         val items = readMediaItemList("SetMediaItems", mediaItems) ?: return
+        rememberLastAdded(items)
         player.setMediaItems(items)
         player.prepare()
         player.playWhenReady = autoplay
@@ -267,6 +268,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     )
     fun AddMediaItem(mediaItem: YailDictionary) {
         val item = readMediaItems("AddMediaItem") { MediaItemRecord.fromYail(mediaItem, "mediaItem") } ?: return
+        rememberLastAdded(listOf(item))
         player.addMediaItem(item)
         if (player.playbackState == Player.STATE_IDLE) player.prepare()
     }
@@ -274,6 +276,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     @SimpleFunction(description = "Adds a list of media items to the end of the queue, like AddMediaItem for each.")
     fun AddMediaItems(mediaItems: YailList) {
         val items = readMediaItemList("AddMediaItems", mediaItems) ?: return
+        rememberLastAdded(items)
         player.addMediaItems(items)
         if (player.playbackState == Player.STATE_IDLE) player.prepare()
     }
@@ -1717,7 +1720,11 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     )
 
     private fun newItem(source: String, title: String): MediaItem =
-        MediaItems.create(source, title).also { lastAddedId = it.mediaId }
+        MediaItems.create(source, title).also { rememberLastAdded(listOf(it)) }
+
+    private fun rememberLastAdded(items: List<MediaItem>) {
+        items.lastOrNull()?.let { lastAddedId = it.mediaId }
+    }
 
     private fun insert(index: Int, source: String, title: String) {
         player.addMediaItem(index, newItem(source, title))
