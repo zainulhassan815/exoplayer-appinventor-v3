@@ -6,7 +6,7 @@ import android.net.Uri
 import android.os.Bundle
 import java.net.URI
 
-internal class ThumbnailCue(val startMs: Long, val endMs: Long, val image: Uri, val crop: (Bitmap) -> Bitmap)
+internal class ThumbnailCue(val startMs: Long, val image: Uri, val crop: (Bitmap) -> Bitmap)
 
 internal sealed class ThumbnailSource {
 
@@ -22,7 +22,7 @@ internal sealed class ThumbnailSource {
         }
 
         fun cues(): List<ThumbnailCue> = (0 until columns * rows).map { index ->
-            ThumbnailCue(index * intervalMs, (index + 1) * intervalMs, uri) { sheet ->
+            ThumbnailCue(index * intervalMs, uri) { sheet ->
                 val width = sheet.width / columns
                 val height = sheet.height / rows
                 Bitmap.createBitmap(sheet, index % columns * width, index / columns * height, width, height)
@@ -41,16 +41,15 @@ internal sealed class ThumbnailSource {
             return lines.indices.mapNotNull { i ->
                 val timing = TIMING.matchEntire(lines[i]) ?: return@mapNotNull null
                 val target = lines.getOrNull(i + 1)?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
-                val (start, end) = timing.destructured
-                cue(parseTime(start), parseTime(end), target)
+                cue(parseTime(timing.groupValues[1]), target)
             }
         }
 
-        private fun cue(startMs: Long, endMs: Long, target: String): ThumbnailCue {
+        private fun cue(startMs: Long, target: String): ThumbnailCue {
             val image = Uri.parse(URI(uri.toString()).resolve(target.substringBefore('#')).toString())
             val region = REGION.find(target)?.groupValues?.drop(1)?.map(String::toInt)
                 ?.let { (x, y, w, h) -> Rect(x, y, x + w, y + h) }
-            return ThumbnailCue(startMs, endMs, image) { sheet ->
+            return ThumbnailCue(startMs, image) { sheet ->
                 region?.let { Bitmap.createBitmap(sheet, it.left, it.top, it.width(), it.height()) } ?: sheet
             }
         }
@@ -70,7 +69,7 @@ internal sealed class ThumbnailSource {
         private const val KEY_INTERVAL = "media3player.thumbnails.interval"
         private const val KEY_TRACK = "media3player.thumbnails.track"
 
-        private val TIMING = Regex("""([\d:.]+)\s+-->\s+([\d:.]+).*""")
+        private val TIMING = Regex("""([\d:.]+)\s+-->\s+[\d:.]+.*""")
         private val REGION = Regex("""#xywh=(\d+),(\d+),(\d+),(\d+)""")
 
         fun from(extras: Bundle?): ThumbnailSource? {

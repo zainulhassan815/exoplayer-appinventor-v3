@@ -479,7 +479,6 @@ internal class PlayerUi(
         addView(unlockBadge, frame(WRAP, WRAP, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).margins(bottom = dp(18)))
         timeBar.listener = scrubbing
         player.addListener(this)
-        applyLayout(fullscreen = false)
         applyControlVisibility()
         applyAccent()
         syncWithPlayer()
@@ -657,6 +656,10 @@ internal class PlayerUi(
     override fun onTracksChanged(tracks: Tracks) {
         audioOnly = !tracks.isEmpty && !tracks.isTypeSupported(C.TRACK_TYPE_VIDEO)
         updateArtworkVisibility()
+        updateSubtitlesButton()
+    }
+
+    private fun updateSubtitlesButton() {
         subtitlesButton.tint = if (subtitlesEnabled && hasSubtitles) accent else controlColor
         subtitlesButton.alpha = if (hasSubtitles) 1f else 0.5f
     }
@@ -972,7 +975,7 @@ internal class PlayerUi(
         forward.tint = controlColor
         title.setTextColor(controlColor)
         time.setTextColor(controlColor)
-        onTracksChanged(player.currentTracks)
+        updateSubtitlesButton()
     }
 
     private fun applyCorners() {
@@ -990,7 +993,7 @@ internal class PlayerUi(
         endedOverlay.accent = accent
         sheet.accent = accent
         spinner.indeterminateTintList = ColorStateList.valueOf(accent)
-        onTracksChanged(player.currentTracks)
+        updateSubtitlesButton()
     }
 
     private fun describe(error: PlaybackException): String =

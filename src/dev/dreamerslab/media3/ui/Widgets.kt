@@ -13,6 +13,7 @@ import android.view.animation.LinearInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.core.graphics.ColorUtils
 import kotlin.math.ceil
 
 internal class IconButton(
@@ -179,18 +180,13 @@ internal class ToggleSwitch(context: Context) : View(context) {
 
     override fun onDraw(canvas: Canvas) {
         val radius = height / 2f
-        track.color = blend(0x40FFFFFF, accent, position)
+        track.color = ColorUtils.blendARGB(0x40FFFFFF, accent, position)
         rect.set(0f, 0f, width.toFloat(), height.toFloat())
         canvas.drawRoundRect(rect, radius, radius, track)
         val inset = dp(2).toFloat()
         val thumbRadius = radius - inset
         val x = inset + thumbRadius + (width - 2 * (inset + thumbRadius)) * position
         canvas.drawCircle(x, radius, thumbRadius, thumb)
-    }
-
-    private fun blend(from: Int, to: Int, fraction: Float): Int {
-        fun channel(shift: Int) = ((from shr shift and 0xFF) + ((to shr shift and 0xFF) - (from shr shift and 0xFF)) * fraction).toInt()
-        return (channel(24) shl 24) or (channel(16) shl 16) or (channel(8) shl 8) or channel(0)
     }
 }
 

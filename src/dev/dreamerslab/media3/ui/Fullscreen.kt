@@ -1,5 +1,6 @@
 package dev.dreamerslab.media3.ui
 
+import android.R
 import android.app.Activity
 import android.content.pm.ActivityInfo
 import android.os.Build
@@ -54,7 +55,7 @@ internal class Detached(private val view: View) {
 }
 
 internal class Fullscreen(private val activity: Activity, view: View) {
-    private val content: ViewGroup = activity.findViewById(android.R.id.content)
+    private val content: ViewGroup = activity.findViewById(R.id.content)
     private val detached = Detached(view)
     private var orientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
 
@@ -80,7 +81,7 @@ internal class Fullscreen(private val activity: Activity, view: View) {
 }
 
 internal class PlayerDialog(activity: Activity, view: View, private val onBackdropTap: () -> Unit) {
-    private val content: ViewGroup = activity.findViewById(android.R.id.content)
+    private val content: ViewGroup = activity.findViewById(R.id.content)
     private val detached = Detached(view)
     private val backdrop = FrameLayout(activity).apply {
         setBackgroundColor(0x99000000.toInt())

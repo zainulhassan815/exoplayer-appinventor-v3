@@ -31,9 +31,9 @@ internal interface PlaybackSettings : TrackChoices {
     var zoomToFill: Boolean
 }
 
-internal val SPEEDS = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f)
+private val SPEEDS = listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f)
 
-internal class SettingsSheet(activity: Activity, private val settings: PlaybackSettings) {
+internal class SettingsSheet(private val context: Activity, private val settings: PlaybackSettings) {
 
     enum class Page { MAIN, QUALITY, SPEED, SUBTITLES, AUDIO }
 
@@ -41,10 +41,11 @@ internal class SettingsSheet(activity: Activity, private val settings: PlaybackS
 
     var onDismiss: () -> Unit = {}
 
-    private val context = activity
     private val content = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     private val panel = ScrollView(context).apply {
         isVerticalScrollBarEnabled = false
+        isFocusable = false
+        setOnClickListener {}
         addView(content, FrameLayout.LayoutParams(MATCH, WRAP))
     }
     private val scrim = FrameLayout(context).apply {
@@ -58,7 +59,7 @@ internal class SettingsSheet(activity: Activity, private val settings: PlaybackS
             insets
         }
     }
-    private val dialog = Dialog(activity, R.style.Theme_Translucent_NoTitleBar).apply {
+    private val dialog = Dialog(context, R.style.Theme_Translucent_NoTitleBar).apply {
         setContentView(scrim)
         setOnDismissListener { onDismiss() }
     }
@@ -77,8 +78,6 @@ internal class SettingsSheet(activity: Activity, private val settings: PlaybackS
         }
         val radius = context.dp(18).toFloat()
         panel.background = if (side) rounded(SURFACE, radius, 0f, 0f, radius) else rounded(SURFACE, radius, radius, 0f, 0f)
-        panel.setOnClickListener {}
-        panel.isFocusable = false
         dialog.show()
         if (side) dialog.window?.hideSystemBars()
         scrim.alpha = 0f
