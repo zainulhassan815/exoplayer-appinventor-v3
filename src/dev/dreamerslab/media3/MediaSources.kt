@@ -34,7 +34,11 @@ internal class MediaSources(private val context: Context) : MediaSource.Factory 
         shared.setLiveTargetOffsetMs(milliseconds)
     }
 
-    override fun createMediaSource(mediaItem: MediaItem): MediaSource = shared.createMediaSource(mediaItem)
+    override fun createMediaSource(mediaItem: MediaItem): MediaSource {
+        val headers = MediaItems.requestHeaders(mediaItem)
+        val sources = if (headers.isEmpty()) shared else factory(withHeaders(headers))
+        return sources.createMediaSource(mediaItem)
+    }
 
     override fun getSupportedTypes(): IntArray = shared.supportedTypes
 
@@ -46,6 +50,10 @@ internal class MediaSources(private val context: Context) : MediaSource.Factory 
     override fun setLoadErrorHandlingPolicy(loadErrorHandlingPolicy: LoadErrorHandlingPolicy) = apply {
         loadErrorHandling = loadErrorHandlingPolicy
         shared.setLoadErrorHandlingPolicy(loadErrorHandlingPolicy)
+    }
+
+    private fun withHeaders(headers: Map<String, String>) = DataSource.Factory {
+        http.createDataSource().apply { headers.forEach(::setRequestProperty) }
     }
 
     private fun factory(upstream: DataSource.Factory) = DefaultMediaSourceFactory(dataSources(upstream))

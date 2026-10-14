@@ -24,7 +24,9 @@ public enum MediaItemField implements OptionList<String> {
   /** A dictionary with ClippingConfigurationField keys: plays only part of the media. */
   ClippingConfiguration("clippingConfiguration"),
   /** A dictionary with ThumbnailsField keys: thumbnails shown while scrubbing. */
-  Thumbnails("thumbnails");
+  Thumbnails("thumbnails"),
+  /** A dictionary of HTTP headers sent with this media's requests, on top of the headers set with SetHeader. */
+  RequestHeaders("requestHeaders");
 
   private static final Map<String, MediaItemField> lookup = new HashMap<>();
 

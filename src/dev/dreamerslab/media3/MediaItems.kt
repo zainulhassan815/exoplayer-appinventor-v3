@@ -1,6 +1,7 @@
 package dev.dreamerslab.media3
 
 import android.net.Uri
+import android.os.Bundle
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -26,9 +27,19 @@ internal object MediaItems {
         MediaType.Progressive to MimeTypes.VIDEO_UNKNOWN,
     )
 
+    private const val KEY_REQUEST_HEADERS = "media3player.requestHeaders"
     private var nextId = 0
 
     fun newMediaId() = "media-${nextId++}"
+
+    fun requestHeaders(item: MediaItem): Map<String, String> {
+        val headers = item.mediaMetadata.extras?.getBundle(KEY_REQUEST_HEADERS) ?: return emptyMap()
+        return headers.keySet().associateWith { headers.getString(it).orEmpty() }
+    }
+
+    fun requestHeadersExtras(headers: Map<String, String>, extras: Bundle?): Bundle = Bundle(extras ?: Bundle()).apply {
+        putBundle(KEY_REQUEST_HEADERS, Bundle().apply { headers.forEach(::putString) })
+    }
 
     fun create(source: String, title: String): MediaItem =
         MediaItem.Builder()

@@ -37,7 +37,7 @@ internal object MediaItemRecord {
                     .setArtist(fields.text(MediaItemField.Artist))
                     .setDescription(fields.text(MediaItemField.Description))
                     .setArtworkUri(fields.text(MediaItemField.ArtworkUri)?.let(MediaItems::resolve))
-                    .setExtras(extras(thumbnails, clearKeysLicense))
+                    .setExtras(extras(thumbnails, clearKeysLicense, fields.textDictionary(MediaItemField.RequestHeaders)))
                     .build()
             )
             .setDrmConfiguration(drm?.takeIf { clearKeysLicense == null }?.let(::drm))
@@ -71,6 +71,9 @@ internal object MediaItemRecord {
             setField(MediaItemField.ClippingConfiguration, clippingToYail(it))
         }
         ThumbnailSource.from(item.mediaMetadata.extras)?.let { setField(MediaItemField.Thumbnails, thumbnailsToYail(it)) }
+        MediaItems.requestHeaders(item).takeIf { it.isNotEmpty() }?.let {
+            setField(MediaItemField.RequestHeaders, YailDictionary().apply { putAll(it) })
+        }
     }
 
     private fun YailDictionary.setField(field: OptionList<String>, value: Any) {
@@ -117,10 +120,12 @@ internal object MediaItemRecord {
         }
     }
 
-    private fun extras(thumbnails: ThumbnailSource?, clearKeysLicense: String?): Bundle? {
-        val thumbnailExtras = thumbnails?.toExtras(null)
-        return clearKeysLicense?.let { ClearKeys.toExtras(it, thumbnailExtras) } ?: thumbnailExtras
-    }
+    private fun extras(thumbnails: ThumbnailSource?, clearKeysLicense: String?, requestHeaders: Map<String, String>?): Bundle? =
+        listOfNotNull<(Bundle?) -> Bundle>(
+            thumbnails?.let { source -> source::toExtras },
+            clearKeysLicense?.let { license -> { extras -> ClearKeys.toExtras(license, extras) } },
+            requestHeaders?.let { headers -> { extras -> MediaItems.requestHeadersExtras(headers, extras) } },
+        ).fold(null as Bundle?) { extras, add -> add(extras) }
 
     private fun thumbnails(fields: Fields<ThumbnailsField>): ThumbnailSource {
         val uri = MediaItems.resolve(fields.requiredText(ThumbnailsField.Uri))
