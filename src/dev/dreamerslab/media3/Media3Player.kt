@@ -279,7 +279,8 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     }
 
     @SimpleFunction(
-        description = "Replaces the media item at the given position in the queue with another. Index starts at 1."
+        description = "Replaces the media item at the given position in the queue with another, which plays from " +
+            "the start if it was the current media. Index starts at 1."
     )
     fun ReplaceMediaItem(index: Int, mediaItem: YailDictionary) {
         if (index !in 1..player.mediaItemCount) {
@@ -287,7 +288,10 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
             return
         }
         val item = readMediaItems("ReplaceMediaItem") { MediaItemRecord.fromYail(mediaItem, "mediaItem") } ?: return
-        player.replaceMediaItem(index - 1, item)
+        val isCurrent = index - 1 == player.currentMediaItemIndex
+        replaceItemAt(index - 1, item, 0)
+        QueueChanged(player.mediaItemCount)
+        if (isCurrent) MediaChanged(index, item.mediaMetadata.title?.toString() ?: "")
     }
 
     @SimpleFunction(description = "The media item at the given position in the queue, as a dictionary. Index starts at 1.")
@@ -341,7 +345,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
             return
         }
         val item = readMediaItems(function) { MediaItemRecord.update(player.getMediaItemAt(index - 1), change) } ?: return
-        player.replaceMediaItem(index - 1, item)
+        replaceItemAt(index - 1, item, player.currentPosition)
     }
 
     private fun readMediaItemList(function: String, mediaItems: YailList): List<MediaItem>? = readMediaItems(function) {
@@ -1496,7 +1500,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         dispatch("TracksChanged")
     }
 
-    @SimpleEvent(description = "Media was added to, removed from or moved in the queue.")
+    @SimpleEvent(description = "Media was added to, removed from, moved in or replaced in the queue.")
     fun QueueChanged(length: Int) {
         dispatch("QueueChanged", length)
     }
@@ -1725,9 +1729,13 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
 
     private fun updateLastAdded(update: (MediaItem) -> MediaItem) {
         val index = (0 until player.mediaItemCount).firstOrNull { player.getMediaItemAt(it).mediaId == lastAddedId } ?: return
+        replaceItemAt(index, update(player.getMediaItemAt(index)), player.currentPosition)
+    }
+
+    private fun replaceItemAt(index: Int, item: MediaItem, positionMs: Long) {
         updatingQueue = true
-        player.addMediaItem(index + 1, update(player.getMediaItemAt(index)))
-        if (index == player.currentMediaItemIndex) player.seekTo(index + 1, player.currentPosition)
+        player.addMediaItem(index + 1, item)
+        if (index == player.currentMediaItemIndex) player.seekTo(index + 1, positionMs)
         player.removeMediaItem(index)
         updatingQueue = false
     }
