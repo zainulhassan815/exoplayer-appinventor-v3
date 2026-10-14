@@ -145,6 +145,7 @@ internal class ToggleSwitch(context: Context) : View(context) {
     private val thumb = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = TEXT_PRIMARY }
     private val rect = RectF()
     private var position = 0f
+    private var animator: ValueAnimator? = null
 
     var accent: Int = DEFAULT_ACCENT
         set(value) {
@@ -155,13 +156,21 @@ internal class ToggleSwitch(context: Context) : View(context) {
     var checked: Boolean = false
         set(value) {
             field = value
-            ValueAnimator.ofFloat(position, if (value) 1f else 0f).apply {
+            animator?.cancel()
+            val target = if (value) 1f else 0f
+            if (!isAttachedToWindow) {
+                position = target
+                invalidate()
+                return
+            }
+            animator = ValueAnimator.ofFloat(position, target).apply {
                 duration = 180
                 addUpdateListener {
                     position = it.animatedValue as Float
                     invalidate()
                 }
-            }.start()
+                start()
+            }
         }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
