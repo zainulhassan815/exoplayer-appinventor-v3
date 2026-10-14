@@ -29,6 +29,12 @@ internal object ClearKeys {
         return item.buildUpon().setMediaMetadata(item.mediaMetadata.buildUpon().setExtras(extras).build()).build()
     }
 
+    fun keys(item: MediaItem): Map<String, String>? {
+        val license = item.mediaMetadata.extras?.getString(KEY_LICENSE) ?: return null
+        val entries = JSONObject(license).getJSONArray("keys")
+        return (0 until entries.length()).map(entries::getJSONObject).associate { hex(it.getString("kid")) to hex(it.getString("k")) }
+    }
+
     fun sessionManager(item: MediaItem): DrmSessionManager? {
         val license = item.mediaMetadata.extras?.getString(KEY_LICENSE) ?: return null
         return DefaultDrmSessionManager.Builder()
@@ -42,4 +48,7 @@ internal object ClearKeys {
         val bytes = digits.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
         return Base64.encodeToString(bytes, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
     }
+
+    private fun hex(base64Url: String): String =
+        Base64.decode(base64Url, Base64.URL_SAFE or Base64.NO_PADDING).joinToString("") { "%02x".format(it) }
 }

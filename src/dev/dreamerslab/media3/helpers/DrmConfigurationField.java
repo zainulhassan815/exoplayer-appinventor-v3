@@ -10,7 +10,9 @@ public enum DrmConfigurationField implements OptionList<String> {
   /** URL of the license server. */
   LicenseUri("licenseUri"),
   /** A dictionary of HTTP headers sent with license requests. */
-  LicenseRequestHeaders("licenseRequestHeaders");
+  LicenseRequestHeaders("licenseRequestHeaders"),
+  /** A dictionary of key IDs to keys, each 32 hex digits: plays ClearKey content without a license server. */
+  ClearKeys("clearKeys");
 
   private static final Map<String, DrmConfigurationField> lookup = new HashMap<>();
 

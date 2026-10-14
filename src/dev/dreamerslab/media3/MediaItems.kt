@@ -28,9 +28,11 @@ internal object MediaItems {
 
     private var nextId = 0
 
+    fun newMediaId() = "media-${nextId++}"
+
     fun create(source: String, title: String): MediaItem =
         MediaItem.Builder()
-            .setMediaId("media-${nextId++}")
+            .setMediaId(newMediaId())
             .setUri(resolve(source))
             .setMediaMetadata(MediaMetadata.Builder().setTitle(title.ifBlank { null }).build())
             .build()

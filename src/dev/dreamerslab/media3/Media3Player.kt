@@ -79,6 +79,7 @@ import dev.dreamerslab.media3.helpers.ResizeMode
 import dev.dreamerslab.media3.helpers.SeekMode
 import dev.dreamerslab.media3.helpers.SubtitleConfigurationField
 import dev.dreamerslab.media3.helpers.SubtitleEdge
+import dev.dreamerslab.media3.helpers.ThumbnailsField
 import dev.dreamerslab.media3.ui.Chapter
 import dev.dreamerslab.media3.ui.Choice
 import dev.dreamerslab.media3.ui.Control
@@ -309,6 +310,13 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         @Options(SubtitleConfigurationField::class) field: String,
         value: Any
     ) = updateMediaItem("SetSubtitleConfigurationField", index) { it.subtitle(subtitleIndex)[field] = value }
+
+    @SimpleFunction(
+        description = "Changes one thumbnails setting of the media item at the given position in the queue. " +
+            "Index starts at 1."
+    )
+    fun SetThumbnailsField(index: Int, @Options(ThumbnailsField::class) field: String, value: Any) =
+        updateMediaItem("SetThumbnailsField", index) { it.child(MediaItemField.Thumbnails)[field] = value }
 
     private fun updateMediaItem(function: String, index: Int, change: MediaItemRecord.(YailDictionary) -> Unit) {
         if (index !in 1..player.mediaItemCount) {

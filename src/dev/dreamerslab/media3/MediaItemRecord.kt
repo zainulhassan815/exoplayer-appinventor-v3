@@ -14,24 +14,30 @@ import dev.dreamerslab.media3.helpers.DrmScheme
 import dev.dreamerslab.media3.helpers.MediaItemField
 import dev.dreamerslab.media3.helpers.MediaType
 import dev.dreamerslab.media3.helpers.SubtitleConfigurationField
+import dev.dreamerslab.media3.helpers.ThumbnailsField
+import dev.dreamerslab.media3.ui.ThumbnailSource
 
 internal class InvalidRecordException(message: String) : Exception(message)
 
 internal object MediaItemRecord {
 
-    fun fromYail(value: Any?, path: String, base: MediaItem? = null): MediaItem {
+    fun fromYail(value: Any?, path: String, mediaId: String = MediaItems.newMediaId()): MediaItem {
         val fields = Fields(value, path, MediaItemField.values())
-        val uri = fields.requiredText(MediaItemField.Uri)
-        return (base ?: MediaItems.create(uri, "")).buildUpon()
-            .setUri(MediaItems.resolve(uri))
+        val drm = fields.record(MediaItemField.DrmConfiguration, DrmConfigurationField.values())
+        val clearKeysLicense = drm?.let(::clearKeysLicense)
+        val item = MediaItem.Builder()
+            .setMediaId(mediaId)
+            .setUri(MediaItems.resolve(fields.requiredText(MediaItemField.Uri)))
             .setMimeType(fields.option(MediaItemField.MimeType, MediaType.values())?.let { MIME_TYPES[it] })
             .setMediaMetadata(
-                (base?.mediaMetadata ?: MediaMetadata.EMPTY).buildUpon()
+                MediaMetadata.Builder()
                     .setTitle(fields.text(MediaItemField.Title))
                     .setArtist(fields.text(MediaItemField.Artist))
+                    .setDescription(fields.text(MediaItemField.Description))
+                    .setArtworkUri(fields.text(MediaItemField.ArtworkUri)?.let(MediaItems::resolve))
                     .build()
             )
-            .setDrmConfiguration(fields.record(MediaItemField.DrmConfiguration, DrmConfigurationField.values())?.let(::drm))
+            .setDrmConfiguration(drm?.takeIf { clearKeysLicense == null }?.let(::drm))
             .setSubtitleConfigurations(
                 fields.records(MediaItemField.SubtitleConfigurations, SubtitleConfigurationField.values()).map(::subtitle)
             )
@@ -40,6 +46,10 @@ internal object MediaItemRecord {
                     ?: MediaItem.ClippingConfiguration.UNSET
             )
             .build()
+        val thumbnails = fields.record(MediaItemField.Thumbnails, ThumbnailsField.values())?.let(::thumbnails)
+        return item
+            .let { withThumbnails -> thumbnails?.let { MediaItems.withThumbnails(withThumbnails, it) } ?: withThumbnails }
+            .let { withKeys -> clearKeysLicense?.let { ClearKeys.withLicense(withKeys, it) } ?: withKeys }
     }
 
     fun toYail(item: MediaItem): YailDictionary = YailDictionary().apply {
@@ -47,16 +57,21 @@ internal object MediaItemRecord {
         setField(MediaItemField.Uri, local?.uri?.toString().orEmpty())
         item.mediaMetadata.title?.let { setField(MediaItemField.Title, it.toString()) }
         item.mediaMetadata.artist?.let { setField(MediaItemField.Artist, it.toString()) }
+        item.mediaMetadata.description?.let { setField(MediaItemField.Description, it.toString()) }
+        item.mediaMetadata.artworkUri?.let { setField(MediaItemField.ArtworkUri, it.toString()) }
         MIME_TYPES.entries.firstOrNull { it.value != null && it.value == local?.mimeType }?.let {
             setField(MediaItemField.MimeType, it.key)
         }
-        local?.drmConfiguration?.let { setField(MediaItemField.DrmConfiguration, drmToYail(it)) }
+        (ClearKeys.keys(item)?.let(::clearKeysToYail) ?: local?.drmConfiguration?.let(::drmToYail))?.let {
+            setField(MediaItemField.DrmConfiguration, it)
+        }
         local?.subtitleConfigurations?.takeIf { it.isNotEmpty() }?.let { subtitles ->
             setField(MediaItemField.SubtitleConfigurations, YailList.makeList(subtitles.map(::subtitleToYail)))
         }
         item.clippingConfiguration.takeIf { it != MediaItem.ClippingConfiguration.UNSET }?.let {
             setField(MediaItemField.ClippingConfiguration, clippingToYail(it))
         }
+        ThumbnailSource.from(item.mediaMetadata.extras)?.let { setField(MediaItemField.Thumbnails, thumbnailsToYail(it)) }
     }
 
     fun YailDictionary.setField(field: OptionList<String>, value: Any) {
@@ -76,15 +91,40 @@ internal object MediaItemRecord {
     }
 
     fun update(item: MediaItem, change: MediaItemRecord.(YailDictionary) -> Unit): MediaItem =
-        fromYail(toYail(item).also { change(it) }, "mediaItem", item)
+        fromYail(toYail(item).also { change(it) }, "mediaItem", item.mediaId)
 
     private fun drm(fields: Fields<DrmConfigurationField>): MediaItem.DrmConfiguration {
         val scheme = fields.option(DrmConfigurationField.Scheme, DrmScheme.values()) ?: DrmScheme.Widevine
         return MediaItems.drm(
             DRM_SCHEMES.getValue(scheme),
             fields.text(DrmConfigurationField.LicenseUri).orEmpty(),
-            fields.headers(DrmConfigurationField.LicenseRequestHeaders)
+            fields.textDictionary(DrmConfigurationField.LicenseRequestHeaders).orEmpty()
         )
+    }
+
+    private fun clearKeysLicense(fields: Fields<DrmConfigurationField>): String? {
+        val keys = fields.textDictionary(DrmConfigurationField.ClearKeys) ?: return null
+        fields.requireOneOf(DrmConfigurationField.ClearKeys, DrmConfigurationField.LicenseUri)
+        val scheme = fields.option(DrmConfigurationField.Scheme, DrmScheme.values())
+        if (scheme != null && scheme != DrmScheme.ClearKey) {
+            throw fields.error("clearKeys only works with the ClearKey scheme.")
+        }
+        return try {
+            ClearKeys.license(keys)
+        } catch (e: IllegalArgumentException) {
+            throw fields.error("clearKeys: ${e.message}")
+        }
+    }
+
+    private fun thumbnails(fields: Fields<ThumbnailsField>): ThumbnailSource {
+        val uri = MediaItems.resolve(fields.requiredText(ThumbnailsField.Uri))
+        val grid = listOf(ThumbnailsField.Columns, ThumbnailsField.Rows, ThumbnailsField.IntervalMs).map(fields::number)
+        if (grid.all { it == null }) return ThumbnailSource.Track(uri)
+        val (columns, rows, intervalMs) = grid
+        if (columns == null || rows == null || intervalMs == null || columns < 1 || rows < 1 || intervalMs <= 0) {
+            throw fields.error("a sprite sheet needs columns and rows of at least 1, and intervalMs more than 0.")
+        }
+        return ThumbnailSource.Grid(uri, columns.toInt(), rows.toInt(), intervalMs)
     }
 
     private fun subtitle(fields: Fields<SubtitleConfigurationField>) = MediaItems.subtitle(
@@ -103,6 +143,23 @@ internal object MediaItemRecord {
         drm.licenseUri?.let { setField(DrmConfigurationField.LicenseUri, it.toString()) }
         if (drm.licenseRequestHeaders.isNotEmpty()) {
             setField(DrmConfigurationField.LicenseRequestHeaders, YailDictionary().apply { putAll(drm.licenseRequestHeaders) })
+        }
+    }
+
+    private fun clearKeysToYail(keys: Map<String, String>) = YailDictionary().apply {
+        setField(DrmConfigurationField.Scheme, DrmScheme.ClearKey)
+        setField(DrmConfigurationField.ClearKeys, YailDictionary().apply { putAll(keys) })
+    }
+
+    private fun thumbnailsToYail(source: ThumbnailSource) = YailDictionary().apply {
+        when (source) {
+            is ThumbnailSource.Track -> setField(ThumbnailsField.Uri, source.uri.toString())
+            is ThumbnailSource.Grid -> {
+                setField(ThumbnailsField.Uri, source.uri.toString())
+                setField(ThumbnailsField.Columns, source.columns)
+                setField(ThumbnailsField.Rows, source.rows)
+                setField(ThumbnailsField.IntervalMs, source.intervalMs)
+            }
         }
     }
 
@@ -160,10 +217,16 @@ internal object MediaItemRecord {
             )
         }
 
-        fun headers(field: F): Map<String, String> = when (val value = values[field]) {
-            null -> emptyMap()
-            is YailDictionary -> value.entries.associate { (name, header) -> name.toString() to header.toString() }
+        fun textDictionary(field: F): Map<String, String>? = when (val value = values[field]) {
+            null -> null
+            is YailDictionary -> value.entries.associate { (name, text) -> name.toString() to text.toString() }
             else -> throw invalid(field, "a dictionary")
+        }
+
+        fun requireOneOf(field: F, other: F) {
+            if (values[field] != null && values[other] != null) {
+                throw error("use ${field.toUnderlyingValue()} or ${other.toUnderlyingValue()}, not both.")
+            }
         }
 
         fun <G : OptionList<String>> record(field: F, choices: Array<G>): Fields<G>? =
@@ -176,6 +239,8 @@ internal object MediaItemRecord {
             }
             else -> throw invalid(field, "a list")
         }
+
+        fun error(message: String) = InvalidRecordException("$path: $message")
 
         private fun invalid(field: F, expected: String) =
             InvalidRecordException("$path.${field.toUnderlyingValue()} must be $expected.")

@@ -11,6 +11,10 @@ public enum MediaItemField implements OptionList<String> {
   Title("title"),
   /** Text shown as the media's artist. */
   Artist("artist"),
+  /** Text describing the media, shown in the media notification. */
+  Description("description"),
+  /** URL or asset name of an image for the media, shown in the media notification. */
+  ArtworkUri("artworkUri"),
   /** A MediaType: the format, for URLs that don't end in a known extension. */
   MimeType("mimeType"),
   /** A dictionary with DrmConfigurationField keys: plays the media with DRM. */
@@ -18,7 +22,9 @@ public enum MediaItemField implements OptionList<String> {
   /** A list of dictionaries with SubtitleConfigurationField keys: subtitle files for the media. */
   SubtitleConfigurations("subtitleConfigurations"),
   /** A dictionary with ClippingConfigurationField keys: plays only part of the media. */
-  ClippingConfiguration("clippingConfiguration");
+  ClippingConfiguration("clippingConfiguration"),
+  /** A dictionary with ThumbnailsField keys: thumbnails shown while scrubbing. */
+  Thumbnails("thumbnails");
 
   private static final Map<String, MediaItemField> lookup = new HashMap<>();
 

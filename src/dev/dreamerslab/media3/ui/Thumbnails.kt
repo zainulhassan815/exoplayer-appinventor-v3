@@ -12,7 +12,7 @@ internal sealed class ThumbnailSource {
 
     abstract fun toExtras(extras: Bundle?): Bundle
 
-    class Grid(val uri: Uri, private val columns: Int, private val rows: Int, private val intervalMs: Long) : ThumbnailSource() {
+    class Grid(val uri: Uri, val columns: Int, val rows: Int, val intervalMs: Long) : ThumbnailSource() {
 
         override fun toExtras(extras: Bundle?): Bundle = Bundle(extras ?: Bundle()).apply {
             putString(KEY_GRID, uri.toString())
