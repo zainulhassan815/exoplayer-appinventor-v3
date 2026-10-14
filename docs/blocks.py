@@ -16,7 +16,8 @@ METHOD_GROUPS = [
     ('Media items', 'Media items describe one media and how to play it, as a dictionary with keys from the field '
      'dropdowns. See [Media items](../README.md#media-items).',
      ['SetMediaItems', 'AddMediaItem', 'AddMediaItems', 'ReplaceMediaItem', 'GetMediaItemAt', 'SetMediaItemField',
-      'SetDrmConfigurationField', 'SetSubtitleConfigurationField', 'SetClippingConfigurationField', 'SetThumbnailsField']),
+      'SetDrmConfigurationField', 'SetSubtitleConfigurationField', 'SetClippingConfigurationField', 'SetThumbnailsField',
+      'SetLiveConfigurationField']),
     ('Fullscreen, dialog and frames', 'Where the player is shown, and saving frames.',
      ['EnterFullscreen', 'ExitFullscreen', 'ShowAsDialog', 'CloseDialog', 'MoveTo', 'CaptureFrame']),
     ('Tracks, chapters and requests', 'Quality, audio and subtitle tracks, chapters, and HTTP headers.',

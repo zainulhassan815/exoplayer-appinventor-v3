@@ -71,16 +71,17 @@ can't be misspelled; only the uri is required. Pass items to `SetMediaItems`,
 
 <img src="docs/screenshots/media-items.png" alt="A queue of media items built with dictionary blocks and field dropdowns">
 
-The keys come from five dropdowns, one for each part of a media item, named after
+The keys come from six dropdowns, one for each part of a media item, named after
 Media3's `MediaItem` classes:
 
 | Dropdown | Fields |
 |---|---|
-| `MediaItemField` | `Uri`, `Title`, `Artist`, `Description`, `ArtworkUri`, `MimeType` (a `MediaType`), `DrmConfiguration`, `SubtitleConfigurations` (a list), `ClippingConfiguration`, `Thumbnails` |
+| `MediaItemField` | `Uri`, `Title`, `Artist`, `Description`, `ArtworkUri`, `MimeType` (a `MediaType`), `DrmConfiguration`, `SubtitleConfigurations` (a list), `ClippingConfiguration`, `Thumbnails`, `LiveConfiguration`, `RequestHeaders` (HTTP headers for this media, on top of `SetHeader`'s) |
 | `DrmConfigurationField` | `Scheme` (a `DrmScheme`, Widevine when missing), `LicenseUri`, `LicenseRequestHeaders`, `ClearKeys` (key ID → key, in hex, instead of a license server) |
 | `SubtitleConfigurationField` | `Uri`, `Language`, `Label` |
 | `ClippingConfigurationField` | `StartPositionMs`, `EndPositionMs` (0 plays to the end) |
 | `ThumbnailsField` | `Uri` of a WebVTT thumbnail track (like `storyboard.vtt`), or of a sprite sheet with `Columns`, `Rows` and `IntervalMs` |
+| `LiveConfigurationField` | `TargetOffsetMs`, `MinOffsetMs`, `MaxOffsetMs`, `MinPlaybackSpeed`, `MaxPlaybackSpeed`: how close to the live edge a live stream plays, overriding `TargetLiveOffset` |
 
 Playlists decoded from JSON work as they are, with the field names as text keys:
 
@@ -91,7 +92,7 @@ Playlists decoded from JSON work as they are, with the field names as text keys:
 ```
 
 `SetMediaItemField`, `SetDrmConfigurationField`, `SetSubtitleConfigurationField`,
-`SetClippingConfigurationField` and `SetThumbnailsField` change one field of a media item
+`SetClippingConfigurationField`, `SetThumbnailsField` and `SetLiveConfigurationField` change one field of a media item
 already in the queue. Every item is checked when it's passed to the player: an unknown or
 misplaced key, a missing uri or a value of the wrong type raises `Screen.ErrorOccurred`
 with error 30106 and a message naming the field, like `mediaItems[3].mimeType: "HSL" isn't

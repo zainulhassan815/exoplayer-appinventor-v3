@@ -141,6 +141,10 @@ Media items describe one media and how to play it, as a dictionary with keys fro
 
 **SetThumbnailsField:** Changes one thumbnails setting of the media item at the given position in the queue. Index starts at 1.
 
+![SetLiveConfigurationField](images/blocks/Media3Player1-SetLiveConfigurationField.png)
+
+**SetLiveConfigurationField:** Changes one live stream setting of the media item at the given position in the queue. Index starts at 1.
+
 ## Functions: Fullscreen, dialog and frames
 
 Where the player is shown, and saving frames.
@@ -595,7 +599,7 @@ Also in the designer, under Advanced.
 
 ![get TargetLiveOffset](images/blocks/Media3Player1-getTargetLiveOffset.png) ![set TargetLiveOffset](images/blocks/Media3Player1-setTargetLiveOffset.png)
 
-**TargetLiveOffset** (read-write): How far behind the live edge live streams play, in milliseconds. 0 uses the stream's own setting. Applies to media added afterwards.
+**TargetLiveOffset** (read-write): How far behind the live edge live streams play, in milliseconds. 0 uses the stream's own setting. Applies to media added afterwards; a media item's LiveConfiguration overrides it.
 
 ![get CacheSize](images/blocks/Media3Player1-getCacheSize.png) ![set CacheSize](images/blocks/Media3Player1-setCacheSize.png)
 
@@ -773,9 +777,13 @@ Choices for blocks and media item fields.
 
 **FullscreenOrientation:** Auto, Landscape, Portrait, Sensor
 
+![LiveConfigurationField](images/blocks/helper-LiveConfigurationField.png)
+
+**LiveConfigurationField:** TargetOffsetMs, MinOffsetMs, MaxOffsetMs, MinPlaybackSpeed, MaxPlaybackSpeed
+
 ![MediaItemField](images/blocks/helper-MediaItemField.png)
 
-**MediaItemField:** Uri, Title, Artist, Description, ArtworkUri, MimeType, DrmConfiguration, SubtitleConfigurations, ClippingConfiguration, Thumbnails
+**MediaItemField:** Uri, Title, Artist, Description, ArtworkUri, MimeType, DrmConfiguration, SubtitleConfigurations, ClippingConfiguration, Thumbnails, RequestHeaders, LiveConfiguration
 
 ![MediaType](images/blocks/helper-MediaType.png)
 
