@@ -255,9 +255,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
             "keys are MediaItemField choices; only Uri is required."
     )
     fun SetMediaItems(mediaItems: YailList) {
-        val items = readMediaItems("SetMediaItems") {
-            mediaItems.toArray().mapIndexed { index, item -> MediaItemRecord.fromYail(item, "mediaItems[${index + 1}]") }
-        } ?: return
+        val items = readMediaItemList("SetMediaItems", mediaItems) ?: return
         player.setMediaItems(items)
         player.prepare()
         player.playWhenReady = autoplay
@@ -271,6 +269,25 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         val item = readMediaItems("AddMediaItem") { MediaItemRecord.fromYail(mediaItem, "mediaItem") } ?: return
         player.addMediaItem(item)
         if (player.playbackState == Player.STATE_IDLE) player.prepare()
+    }
+
+    @SimpleFunction(description = "Adds a list of media items to the end of the queue, like AddMediaItem for each.")
+    fun AddMediaItems(mediaItems: YailList) {
+        val items = readMediaItemList("AddMediaItems", mediaItems) ?: return
+        player.addMediaItems(items)
+        if (player.playbackState == Player.STATE_IDLE) player.prepare()
+    }
+
+    @SimpleFunction(
+        description = "Replaces the media item at the given position in the queue with another. Index starts at 1."
+    )
+    fun ReplaceMediaItem(index: Int, mediaItem: YailDictionary) {
+        if (index !in 1..player.mediaItemCount) {
+            reportNotInQueue("ReplaceMediaItem", index)
+            return
+        }
+        val item = readMediaItems("ReplaceMediaItem") { MediaItemRecord.fromYail(mediaItem, "mediaItem") } ?: return
+        player.replaceMediaItem(index - 1, item)
     }
 
     @SimpleFunction(description = "The media item at the given position in the queue, as a dictionary. Index starts at 1.")
@@ -325,6 +342,10 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         }
         val item = readMediaItems(function) { MediaItemRecord.update(player.getMediaItemAt(index - 1), change) } ?: return
         player.replaceMediaItem(index - 1, item)
+    }
+
+    private fun readMediaItemList(function: String, mediaItems: YailList): List<MediaItem>? = readMediaItems(function) {
+        mediaItems.toArray().mapIndexed { index, item -> MediaItemRecord.fromYail(item, "mediaItems[${index + 1}]") }
     }
 
     private fun <T> readMediaItems(function: String, read: () -> T): T? =
