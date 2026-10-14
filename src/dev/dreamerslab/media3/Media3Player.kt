@@ -1283,6 +1283,9 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     @SimpleProperty(description = "Whether media is playing.")
     fun IsPlaying(): Boolean = player.isPlaying
 
+    @SimpleProperty(description = "The playback state: IDLE, BUFFERING, READY or ENDED.")
+    fun PlaybackState(): String = playbackStateName(player.playbackState)
+
     @SimpleProperty(description = "Whether the player is shown in a dialog.")
     fun IsDialogShowing(): Boolean = ui?.isInDialog == true
 
@@ -1411,14 +1414,14 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
             isBuffering = buffering
             BufferingChanged(buffering)
         }
-        PlaybackStateChanged(
-            when (playbackState) {
-                Player.STATE_BUFFERING -> "BUFFERING"
-                Player.STATE_READY -> "READY"
-                Player.STATE_ENDED -> "ENDED"
-                else -> "IDLE"
-            }
-        )
+        PlaybackStateChanged(playbackStateName(playbackState))
+    }
+
+    private fun playbackStateName(playbackState: Int) = when (playbackState) {
+        Player.STATE_BUFFERING -> "BUFFERING"
+        Player.STATE_READY -> "READY"
+        Player.STATE_ENDED -> "ENDED"
+        else -> "IDLE"
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {

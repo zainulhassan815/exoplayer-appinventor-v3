@@ -112,7 +112,7 @@ Properties, grouped in the designer:
   `SeekMode` (Exact, Closest keyframe), `PlaybackSpeed`, `AutoAdvance`, `UpNextCountdown`, `PreferredAudioLanguage`,
   `PreferredSubtitleLanguage`, `ShowSubtitles`, `MaxVideoHeight`, `MaxVideoBitrate`
 - Advanced: `UserAgent`, `TargetLiveOffset`, `CacheSize`
-- Read-only: `IsPlaying`, `IsFullscreen`, `IsLive`, `LiveOffset`, `Position`, `Duration`,
+- Read-only: `IsPlaying`, `PlaybackState`, `IsFullscreen`, `IsLive`, `LiveOffset`, `Position`, `Duration`,
   `Title`, `Artist`, `Queue`, `QueueLength`, `CurrentIndex`, `HasNext`, `HasPrevious`,
   `VideoQualities`, `AudioTracks`, `SubtitleTracks`, `IsDialogShowing`, `BufferedPosition`,
   `BufferedPercentage`, `VideoWidth`, `VideoHeight`, `VideoBitrate`, `DroppedFrames`,
