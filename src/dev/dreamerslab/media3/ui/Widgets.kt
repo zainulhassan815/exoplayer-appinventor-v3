@@ -102,8 +102,7 @@ internal class PillButton(context: Context, text: String, icon: Icon? = null, pr
 
     private fun refresh() {
         val color = if (filled) accent else 0x1FFFFFFF
-        val shape = rounded(color, dp(999).toFloat())
-        background = ripple(rounded(color, dp(999).toFloat()), shape)
+        background = ripple(pill(color), pill(color))
     }
 }
 
@@ -134,7 +133,7 @@ internal class SpeedChip(context: Context) : TextView(context) {
 
     private fun refresh() {
         val color = if (speed == 1f) 0x24FFFFFF else accent
-        background = ripple(rounded(color, dp(999).toFloat()), rounded(color, dp(999).toFloat()))
+        background = ripple(pill(color), pill(color))
     }
 }
 

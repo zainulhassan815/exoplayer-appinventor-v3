@@ -56,8 +56,8 @@ internal class TimeBar(context: Context) : View(context) {
     private var position = 0L
     private var buffered = 0L
 
-    private val trackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x40FFFFFF }
-    private val bufferPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x73FFFFFF }
+    private val trackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = DEFAULT_SEEK_BAR_TRACK }
+    private val bufferPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = DEFAULT_SEEK_BAR_BUFFERED }
     private val progressPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val markerPaint = Paint().apply { color = 0x99000000.toInt() }
     private val thumbPaint = Paint(Paint.ANTI_ALIAS_FLAG)

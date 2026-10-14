@@ -136,7 +136,7 @@ internal class Badge(context: Context, icon: Icon, text: String) : TextView(cont
         typeface = MEDIUM
         gravity = Gravity.CENTER_VERTICAL
         setPadding(dp(14), dp(7), dp(14), dp(7))
-        background = rounded(0xA6000000.toInt(), dp(999).toFloat())
+        background = pill(0xA6000000.toInt())
         val glyph = IconDrawable(icon).apply { setBounds(0, 0, dp(18), dp(18)) }
         setCompoundDrawablesRelative(glyph, null, null, null)
         compoundDrawablePadding = dp(6)

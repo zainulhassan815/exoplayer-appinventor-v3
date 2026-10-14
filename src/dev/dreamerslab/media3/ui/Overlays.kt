@@ -110,7 +110,7 @@ internal class EndedOverlay(
     }
 
     private val replay = IconButton(context, Icon.REPLAY, "Replay").apply {
-        background = ovalRipple(rounded(0x26FFFFFF, 999f))
+        background = ovalRipple(pill(0x26FFFFFF))
         setOnClickListener { replay() }
     }
     private val replayLabel = context.text(12f, TEXT_SECONDARY, medium = true).apply { text = "Replay" }

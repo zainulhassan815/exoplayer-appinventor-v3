@@ -84,6 +84,10 @@ import dev.dreamerslab.media3.ui.Chapter
 import dev.dreamerslab.media3.ui.Choice
 import dev.dreamerslab.media3.ui.Control
 import dev.dreamerslab.media3.ui.DEFAULT_ACCENT
+import dev.dreamerslab.media3.ui.DEFAULT_SCRIM
+import dev.dreamerslab.media3.ui.DEFAULT_SEEK_BAR_BUFFERED
+import dev.dreamerslab.media3.ui.DEFAULT_SEEK_BAR_TRACK
+import dev.dreamerslab.media3.ui.DEFAULT_SUBTITLE_BACKGROUND
 import dev.dreamerslab.media3.ui.Gesture
 import dev.dreamerslab.media3.ui.PlayerUi
 import dev.dreamerslab.media3.ui.ThumbnailSource
@@ -159,16 +163,16 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     private var hiddenControls = emptySet<Control>()
     private var playerBackground = Color.BLACK
     private var controlColor = Color.WHITE
-    private var scrimColor = 0xB3000000.toInt()
-    private var seekBarTrackColor = 0x40FFFFFF
-    private var seekBarBufferedColor = 0x73FFFFFF
+    private var scrimColor = DEFAULT_SCRIM
+    private var seekBarTrackColor = DEFAULT_SEEK_BAR_TRACK
+    private var seekBarBufferedColor = DEFAULT_SEEK_BAR_BUFFERED
     private var cornerRadius = 0
     private var posterImage = ""
     private var showRemainingTime = false
     private var subtitlesShownFor: String? = null
     private var subtitleSize = 100
     private var subtitleTextColor = Color.WHITE
-    private var subtitleBackgroundColor = 0xB8000000.toInt()
+    private var subtitleBackgroundColor = DEFAULT_SUBTITLE_BACKGROUND
     private var subtitleEdge = SubtitleEdge.None
     private var subtitleBottomMargin = 8
 

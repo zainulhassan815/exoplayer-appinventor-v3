@@ -179,7 +179,7 @@ internal class PlayerUi(
             keepScreenOn = value && player.isPlaying
         }
 
-    var captionStyle = CaptionStyleCompat(Color.WHITE, 0xB8000000.toInt(), Color.TRANSPARENT, CaptionStyleCompat.EDGE_TYPE_NONE, Color.BLACK, null)
+    var captionStyle = CaptionStyleCompat(Color.WHITE, DEFAULT_SUBTITLE_BACKGROUND, Color.TRANSPARENT, CaptionStyleCompat.EDGE_TYPE_NONE, Color.BLACK, null)
         set(value) {
             field = value
             playerView.subtitleView?.setStyle(value)
@@ -242,7 +242,7 @@ internal class PlayerUi(
     private val next = IconButton(activity, Icon.SKIP_NEXT, "Next", 44, 28).apply { setOnClickListener { skip(player::seekToNextMediaItem) } }
     private val rewind = SeekJumpButton(activity, forward = false).apply { setOnClickListener { seekBy(-seekIncrementMs) } }
     private val playPause = IconButton(activity, Icon.PLAY, "Play").apply {
-        background = ovalRipple(rounded(0x59000000, 999f))
+        background = ovalRipple(pill(0x59000000))
         setOnClickListener { togglePlayback() }
     }
     private val forward = SeekJumpButton(activity, forward = true).apply { setOnClickListener { seekBy(seekIncrementMs) } }

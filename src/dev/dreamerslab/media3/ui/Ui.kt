@@ -28,6 +28,9 @@ internal const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
 internal const val TEXT_PRIMARY = Color.WHITE
 internal const val TEXT_SECONDARY = 0xB3FFFFFF.toInt()
 internal const val DEFAULT_SCRIM = 0xB3000000.toInt()
+internal const val DEFAULT_SEEK_BAR_TRACK = 0x40FFFFFF
+internal const val DEFAULT_SEEK_BAR_BUFFERED = 0x73FFFFFF
+internal const val DEFAULT_SUBTITLE_BACKGROUND = 0xB8000000.toInt()
 internal const val SCRIM_DARK = 0xC708080C.toInt()
 internal const val SURFACE = 0xFF1B1B24.toInt()
 internal const val ERROR = 0xFFFF6B6B.toInt()
@@ -41,6 +44,8 @@ internal fun Context.dp(value: Number): Int = (value.toFloat() * resources.displ
 internal fun View.dp(value: Number): Int = context.dp(value)
 
 internal fun withAlpha(color: Int, alpha: Int): Int = (color and 0x00FFFFFF) or (alpha shl 24)
+
+internal fun View.pill(color: Int): GradientDrawable = rounded(color, dp(999).toFloat())
 
 internal fun rounded(color: Int, radius: Float): GradientDrawable =
     GradientDrawable().apply {
