@@ -26,16 +26,12 @@ import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
 import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.Util
-import androidx.media3.datasource.DefaultDataSource
-import androidx.media3.datasource.DefaultHttpDataSource
-import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
-import androidx.media3.exoplayer.drm.DefaultDrmSessionManagerProvider
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadRequest
@@ -43,7 +39,6 @@ import androidx.media3.exoplayer.offline.DownloadService
 import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import androidx.media3.extractor.metadata.icy.IcyInfo
 import androidx.media3.extractor.metadata.id3.TextInformationFrame
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaController
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionToken
@@ -102,11 +97,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     OnInitializeListener, OnPauseListener, OnResumeListener, OnDestroyListener, Player.Listener {
 
     private val activity: Activity = container.`$context`()
-    private val http = DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true)
-    private val network = DefaultDataSource.Factory(activity, http)
-    private val drmSessions = DefaultDrmSessionManagerProvider()
-    private val mediaSources = DefaultMediaSourceFactory(network)
-        .setDrmSessionManagerProvider { ClearKeys.sessionManager(it) ?: drmSessions.get(it) }
+    private val mediaSources = MediaSources(activity)
     private val audioEffects = AudioEffects()
     private val renderers = object : DefaultRenderersFactory(activity) {
         override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioTrackPlaybackParams: Boolean): AudioSink =
@@ -179,7 +170,6 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     init {
         player.pauseAtEndOfMediaItems = true
         player.addListener(this)
-        updateDataSources()
         audioEffects.attach(player.audioSessionId)
         player.addAnalyticsListener(object : AnalyticsListener {
             override fun onDroppedVideoFrames(eventTime: AnalyticsListener.EventTime, count: Int, elapsedMs: Long) {
@@ -432,13 +422,13 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     @SimpleFunction(description = "Sends the given HTTP header with every media request.")
     fun SetHeader(name: String, value: String) {
         headers[name] = value
-        http.setDefaultRequestProperties(headers)
+        mediaSources.http.setDefaultRequestProperties(headers)
     }
 
     @SimpleFunction(description = "Stops sending the headers set with SetHeader.")
     fun ClearHeaders() {
         headers.clear()
-        http.setDefaultRequestProperties(headers)
+        mediaSources.http.setDefaultRequestProperties(headers)
     }
 
     @SimpleFunction(
@@ -1027,7 +1017,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     @SimpleProperty
     fun UserAgent(userAgent: String) {
         this.userAgent = userAgent
-        http.setUserAgent(userAgent.ifBlank { null })
+        mediaSources.http.setUserAgent(userAgent.ifBlank { null })
     }
 
     @SimpleProperty(
@@ -1041,7 +1031,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     @SimpleProperty
     fun TargetLiveOffset(milliseconds: Long) {
         targetLiveOffset = milliseconds.coerceAtLeast(0)
-        mediaSources.setLiveTargetOffsetMs(if (targetLiveOffset > 0) targetLiveOffset else C.TIME_UNSET)
+        mediaSources.setLiveTargetOffset(if (targetLiveOffset > 0) targetLiveOffset else C.TIME_UNSET)
     }
 
     @SimpleProperty(description = "Whether the current media is a live stream.")
@@ -1255,7 +1245,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     @SimpleProperty
     fun CacheSize(megabytes: Int) {
         cacheSizeMb = megabytes.coerceAtLeast(0)
-        updateDataSources()
+        mediaSources.setCacheSize(cacheSizeMb)
     }
 
     @SimpleProperty(description = "Urls of the downloaded and downloading media.")
@@ -1763,24 +1753,8 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         else -> "Other"
     }
 
-    private fun updateDataSources() {
-        val cached = if (cacheSizeMb > 0) {
-            CacheDataSource.Factory()
-                .setCache(OfflineStorage.streamCache(activity, cacheSizeMb * 1024L * 1024L))
-                .setUpstreamDataSourceFactory(network)
-        } else {
-            network
-        }
-        mediaSources.setDataSourceFactory(
-            CacheDataSource.Factory()
-                .setCache(OfflineStorage.downloadCache(activity))
-                .setUpstreamDataSourceFactory(cached)
-                .setCacheWriteDataSinkFactory(null)
-        )
-    }
-
     private fun downloads(): DownloadManager =
-        OfflineStorage.downloadManager(activity, http).also { manager ->
+        OfflineStorage.downloadManager(activity, mediaSources.http).also { manager ->
             if (!listeningToDownloads) {
                 manager.addListener(downloadListener)
                 listeningToDownloads = true
