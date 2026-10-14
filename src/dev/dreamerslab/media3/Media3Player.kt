@@ -482,16 +482,14 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
             "EqualizerMaxLevel. Band starts at 1, in the order of EqualizerBands."
     )
     fun SetBandLevel(band: Int, decibels: Int) {
-        if (band !in 1..audioEffects.bandFrequencies.size) {
-            reportError("SetBandLevel", ERROR_NOT_IN_LIST, "Band $band is not in the list (1 to ${audioEffects.bandFrequencies.size}).")
-            return
-        }
+        if (!inList("SetBandLevel", "Band", band, audioEffects.bandFrequencies.size)) return
         val (min, max) = audioEffects.levelRangeDb
         audioEffects.setBandLevel(band - 1, decibels.coerceIn(min, max))
     }
 
     @SimpleFunction(description = "Level of an equalizer band in decibels. Band starts at 1.")
-    fun BandLevel(band: Int): Int = audioEffects.bandLevelDb(band - 1)
+    fun BandLevel(band: Int): Int =
+        if (inList("BandLevel", "Band", band, audioEffects.bandFrequencies.size)) audioEffects.bandLevelDb(band - 1) else 0
 
     @SimpleFunction(
         description = "Downloads the media at the given url for offline playback. Playing the same url plays the " +
@@ -1702,12 +1700,13 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     private fun labels(choices: List<Choice>): YailList = YailList.makeList(choices.map { it.label })
 
     private fun select(function: String, choices: List<Choice>, index: Int) {
-        val choice = choices.getOrNull(index - 1)
-        if (choice == null) {
-            reportError(function, ERROR_NOT_IN_LIST, "Index $index is not in the list (1 to ${choices.size}).")
-            return
-        }
-        choice.select()
+        if (inList(function, "Index", index, choices.size)) choices[index - 1].select()
+    }
+
+    private fun inList(function: String, name: String, index: Int, size: Int): Boolean {
+        if (index in 1..size) return true
+        reportError(function, ERROR_NOT_IN_LIST, "$name $index is not in the list (1 to $size).")
+        return false
     }
 
     private fun captionStyle() = CaptionStyleCompat(
