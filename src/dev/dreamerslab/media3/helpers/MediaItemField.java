@@ -26,7 +26,9 @@ public enum MediaItemField implements OptionList<String> {
   /** A dictionary with ThumbnailsField keys: thumbnails shown while scrubbing. */
   Thumbnails("thumbnails"),
   /** A dictionary of HTTP headers sent with this media's requests, on top of the headers set with SetHeader. */
-  RequestHeaders("requestHeaders");
+  RequestHeaders("requestHeaders"),
+  /** A dictionary with LiveConfigurationField keys: how close to the live edge a live stream plays. */
+  LiveConfiguration("liveConfiguration");
 
   private static final Map<String, MediaItemField> lookup = new HashMap<>();
 

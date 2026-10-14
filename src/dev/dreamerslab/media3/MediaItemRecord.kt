@@ -12,6 +12,7 @@ import dev.dreamerslab.media3.MediaItems.MIME_TYPES
 import dev.dreamerslab.media3.helpers.ClippingConfigurationField
 import dev.dreamerslab.media3.helpers.DrmConfigurationField
 import dev.dreamerslab.media3.helpers.DrmScheme
+import dev.dreamerslab.media3.helpers.LiveConfigurationField
 import dev.dreamerslab.media3.helpers.MediaItemField
 import dev.dreamerslab.media3.helpers.MediaType
 import dev.dreamerslab.media3.helpers.SubtitleConfigurationField
@@ -48,6 +49,10 @@ internal object MediaItemRecord {
                 fields.record(MediaItemField.ClippingConfiguration, ClippingConfigurationField.entries)?.let(::clipping)
                     ?: MediaItem.ClippingConfiguration.UNSET
             )
+            .setLiveConfiguration(
+                fields.record(MediaItemField.LiveConfiguration, LiveConfigurationField.entries)?.let(::live)
+                    ?: MediaItem.LiveConfiguration.UNSET
+            )
             .build()
     }
 
@@ -71,6 +76,9 @@ internal object MediaItemRecord {
             setField(MediaItemField.ClippingConfiguration, clippingToYail(it))
         }
         ThumbnailSource.from(item.mediaMetadata.extras)?.let { setField(MediaItemField.Thumbnails, thumbnailsToYail(it)) }
+        item.liveConfiguration.takeIf { it != MediaItem.LiveConfiguration.UNSET }?.let {
+            setField(MediaItemField.LiveConfiguration, liveToYail(it))
+        }
         MediaItems.requestHeaders(item).takeIf { it.isNotEmpty() }?.let {
             setField(MediaItemField.RequestHeaders, YailDictionary().apply { putAll(it) })
         }
@@ -149,6 +157,23 @@ internal object MediaItemRecord {
         fields.number(ClippingConfigurationField.EndPositionMs) ?: 0
     )
 
+    private fun live(fields: Fields<LiveConfigurationField>): MediaItem.LiveConfiguration =
+        MediaItem.LiveConfiguration.Builder()
+            .setTargetOffsetMs(fields.number(LiveConfigurationField.TargetOffsetMs) ?: C.TIME_UNSET)
+            .setMinOffsetMs(fields.number(LiveConfigurationField.MinOffsetMs) ?: C.TIME_UNSET)
+            .setMaxOffsetMs(fields.number(LiveConfigurationField.MaxOffsetMs) ?: C.TIME_UNSET)
+            .setMinPlaybackSpeed(fields.decimal(LiveConfigurationField.MinPlaybackSpeed) ?: C.RATE_UNSET)
+            .setMaxPlaybackSpeed(fields.decimal(LiveConfigurationField.MaxPlaybackSpeed) ?: C.RATE_UNSET)
+            .build()
+
+    private fun liveToYail(live: MediaItem.LiveConfiguration) = YailDictionary().apply {
+        live.targetOffsetMs.takeIf { it != C.TIME_UNSET }?.let { setField(LiveConfigurationField.TargetOffsetMs, it) }
+        live.minOffsetMs.takeIf { it != C.TIME_UNSET }?.let { setField(LiveConfigurationField.MinOffsetMs, it) }
+        live.maxOffsetMs.takeIf { it != C.TIME_UNSET }?.let { setField(LiveConfigurationField.MaxOffsetMs, it) }
+        live.minPlaybackSpeed.takeIf { it != C.RATE_UNSET }?.let { setField(LiveConfigurationField.MinPlaybackSpeed, it) }
+        live.maxPlaybackSpeed.takeIf { it != C.RATE_UNSET }?.let { setField(LiveConfigurationField.MaxPlaybackSpeed, it) }
+    }
+
     private fun drmToYail(drm: MediaItem.DrmConfiguration) = YailDictionary().apply {
         DRM_SCHEMES.entries.firstOrNull { it.value == drm.scheme }?.let { setField(DrmConfigurationField.Scheme, it.key) }
         drm.licenseUri?.let { setField(DrmConfigurationField.LicenseUri, it.toString()) }
@@ -219,6 +244,13 @@ internal object MediaItemRecord {
             is CharSequence -> value.toString().toLongOrNull() ?: throw invalid(field, "a number")
             else -> throw invalid(field, "a number")
         }
+
+        fun decimal(field: F): Float? = when (val value = values[field]) {
+            null -> null
+            is Number -> value.toFloat()
+            is CharSequence -> value.toString().toFloatOrNull() ?: throw invalid(field, "a number")
+            else -> throw invalid(field, "a number")
+        }?.also { if (it <= 0f) throw invalid(field, "more than 0") }
 
         fun <T : OptionList<String>> option(field: F, options: List<T>): T? {
             val value = values[field] ?: return null

@@ -67,6 +67,7 @@ import dev.dreamerslab.media3.helpers.ClippingConfigurationField
 import dev.dreamerslab.media3.helpers.DrmConfigurationField
 import dev.dreamerslab.media3.helpers.DrmScheme
 import dev.dreamerslab.media3.helpers.FullscreenOrientation
+import dev.dreamerslab.media3.helpers.LiveConfigurationField
 import dev.dreamerslab.media3.helpers.MediaItemField
 import dev.dreamerslab.media3.helpers.MediaType
 import dev.dreamerslab.media3.helpers.RepeatMode
@@ -317,6 +318,13 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     )
     fun SetThumbnailsField(index: Int, @Options(ThumbnailsField::class) field: String, value: Any) =
         updateMediaItem("SetThumbnailsField", index) { it.child(MediaItemField.Thumbnails)[field] = value }
+
+    @SimpleFunction(
+        description = "Changes one live stream setting of the media item at the given position in the queue. " +
+            "Index starts at 1."
+    )
+    fun SetLiveConfigurationField(index: Int, @Options(LiveConfigurationField::class) field: String, value: Any) =
+        updateMediaItem("SetLiveConfigurationField", index) { it.child(MediaItemField.LiveConfiguration)[field] = value }
 
     private fun updateMediaItem(function: String, index: Int, change: MediaItemRecord.(YailDictionary) -> Unit) {
         if (!inQueue(function, index)) return
@@ -1022,7 +1030,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
 
     @SimpleProperty(
         description = "How far behind the live edge live streams play, in milliseconds. 0 uses the stream's own " +
-            "setting. Applies to media added afterwards.",
+            "setting. Applies to media added afterwards; a media item's LiveConfiguration overrides it.",
         category = PropertyCategory.ADVANCED
     )
     fun TargetLiveOffset(): Long = targetLiveOffset
