@@ -263,7 +263,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
             "with license requests; pass an empty dictionary if the license server needs none."
     )
     fun SetDrm(@Options(DrmScheme::class) scheme: String, licenseUrl: String, headers: YailDictionary) {
-        val uuid = DRM_SCHEMES.getValue(DrmScheme.fromUnderlyingValue(scheme) ?: return)
+        val uuid = MediaItems.DRM_SCHEMES.getValue(DrmScheme.fromUnderlyingValue(scheme) ?: return)
         val requestHeaders = headers.entries.associate { (name, value) -> name.toString() to value.toString() }
         updateLastAdded { MediaItems.withDrm(it, uuid, licenseUrl, requestHeaders) }
     }
@@ -285,7 +285,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     )
     fun SetMediaType(@Options(MediaType::class) type: String) {
         val mediaType = MediaType.fromUnderlyingValue(type) ?: return
-        updateLastAdded { MediaItems.withMimeType(it, MIME_TYPES[mediaType]) }
+        updateLastAdded { MediaItems.withMimeType(it, MediaItems.MIME_TYPES[mediaType]) }
     }
 
     @SimpleFunction(
@@ -1726,19 +1726,6 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         val SEEK_MODES = mapOf(
             SeekMode.Exact to SeekParameters.EXACT,
             SeekMode.ClosestKeyframe to SeekParameters.CLOSEST_SYNC,
-        )
-        val DRM_SCHEMES = mapOf(
-            DrmScheme.Widevine to C.WIDEVINE_UUID,
-            DrmScheme.ClearKey to C.CLEARKEY_UUID,
-            DrmScheme.PlayReady to C.PLAYREADY_UUID,
-        )
-        val MIME_TYPES = mapOf(
-            MediaType.Auto to null,
-            MediaType.Hls to MimeTypes.APPLICATION_M3U8,
-            MediaType.Dash to MimeTypes.APPLICATION_MPD,
-            MediaType.SmoothStreaming to MimeTypes.APPLICATION_SS,
-            MediaType.Rtsp to MimeTypes.APPLICATION_RTSP,
-            MediaType.Progressive to MimeTypes.VIDEO_UNKNOWN,
         )
         val ORIENTATIONS = mapOf(
             FullscreenOrientation.Auto to null,
