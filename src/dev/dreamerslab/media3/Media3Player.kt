@@ -68,12 +68,16 @@ import com.google.appinventor.components.runtime.OnResumeListener
 import com.google.appinventor.components.runtime.util.OnInitializeListener
 import com.google.appinventor.components.runtime.util.YailDictionary
 import com.google.appinventor.components.runtime.util.YailList
+import dev.dreamerslab.media3.helpers.ClippingConfigurationField
+import dev.dreamerslab.media3.helpers.DrmConfigurationField
 import dev.dreamerslab.media3.helpers.DrmScheme
 import dev.dreamerslab.media3.helpers.FullscreenOrientation
+import dev.dreamerslab.media3.helpers.MediaItemField
 import dev.dreamerslab.media3.helpers.MediaType
 import dev.dreamerslab.media3.helpers.RepeatMode
 import dev.dreamerslab.media3.helpers.ResizeMode
 import dev.dreamerslab.media3.helpers.SeekMode
+import dev.dreamerslab.media3.helpers.SubtitleConfigurationField
 import dev.dreamerslab.media3.helpers.SubtitleEdge
 import dev.dreamerslab.media3.ui.Chapter
 import dev.dreamerslab.media3.ui.Choice
@@ -244,6 +248,84 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         }
         player.moveMediaItem(from - 1, to - 1)
     }
+
+    @SimpleFunction(
+        description = "Plays the given media items, replacing the queue. Each media item is a dictionary whose " +
+            "keys are MediaItemField choices; only Uri is required."
+    )
+    fun SetMediaItems(mediaItems: YailList) {
+        val items = readMediaItems("SetMediaItems") {
+            mediaItems.toArray().mapIndexed { index, item -> MediaItemRecord.fromYail(item, "mediaItems[${index + 1}]") }
+        } ?: return
+        player.setMediaItems(items)
+        player.prepare()
+        player.playWhenReady = autoplay
+    }
+
+    @SimpleFunction(
+        description = "Adds a media item to the end of the queue. The media item is a dictionary whose keys are " +
+            "MediaItemField choices; only Uri is required."
+    )
+    fun AddMediaItem(mediaItem: YailDictionary) {
+        val item = readMediaItems("AddMediaItem") { MediaItemRecord.fromYail(mediaItem, "mediaItem") } ?: return
+        player.addMediaItem(item)
+        if (player.playbackState == Player.STATE_IDLE) player.prepare()
+    }
+
+    @SimpleFunction(description = "The media item at the given position in the queue, as a dictionary. Index starts at 1.")
+    fun GetMediaItemAt(index: Int): YailDictionary {
+        if (index !in 1..player.mediaItemCount) {
+            reportNotInQueue("GetMediaItemAt", index)
+            return YailDictionary()
+        }
+        return MediaItemRecord.toYail(player.getMediaItemAt(index - 1))
+    }
+
+    @SimpleFunction(
+        description = "Changes one field of the media item at the given position in the queue. Index starts at 1."
+    )
+    fun SetMediaItemField(index: Int, @Options(MediaItemField::class) field: String, value: Any) =
+        updateMediaItem("SetMediaItemField", index) { it[field] = value }
+
+    @SimpleFunction(
+        description = "Changes one DRM setting of the media item at the given position in the queue. Index starts at 1."
+    )
+    fun SetDrmConfigurationField(index: Int, @Options(DrmConfigurationField::class) field: String, value: Any) =
+        updateMediaItem("SetDrmConfigurationField", index) { it.child(MediaItemField.DrmConfiguration)[field] = value }
+
+    @SimpleFunction(
+        description = "Changes where the media item at the given position in the queue starts or ends. Index starts at 1."
+    )
+    fun SetClippingConfigurationField(index: Int, @Options(ClippingConfigurationField::class) field: String, value: Any) =
+        updateMediaItem("SetClippingConfigurationField", index) { it.child(MediaItemField.ClippingConfiguration)[field] = value }
+
+    @SimpleFunction(
+        description = "Changes one setting of a subtitle of the media item at the given position in the queue. " +
+            "Both indexes start at 1."
+    )
+    fun SetSubtitleConfigurationField(
+        index: Int,
+        subtitleIndex: Int,
+        @Options(SubtitleConfigurationField::class) field: String,
+        value: Any
+    ) = updateMediaItem("SetSubtitleConfigurationField", index) { it.subtitle(subtitleIndex)[field] = value }
+
+    private fun updateMediaItem(function: String, index: Int, change: MediaItemRecord.(YailDictionary) -> Unit) {
+        if (index !in 1..player.mediaItemCount) {
+            reportNotInQueue(function, index)
+            return
+        }
+        val item = readMediaItems(function) { MediaItemRecord.update(player.getMediaItemAt(index - 1), change) } ?: return
+        player.replaceMediaItem(index - 1, item)
+    }
+
+    private fun <T> readMediaItems(function: String, read: () -> T): T? =
+        try {
+            read()
+        } catch (e: InvalidRecordException) {
+            reportError(function, ERROR_INVALID_MEDIA_ITEM, e.message.orEmpty())
+            null
+        }
 
     @SimpleFunction(
         description = "Adds a subtitle file (WebVTT, SRT, TTML or SSA) to the most recently added media. " +
@@ -1695,6 +1777,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         const val ERROR_CAPTURE = 30103
         const val ERROR_THUMBNAILS = 30104
         const val ERROR_CLEAR_KEYS = 30105
+        const val ERROR_INVALID_MEDIA_ITEM = 30106
         val CAPTION_EDGES = mapOf(
             SubtitleEdge.None to CaptionStyleCompat.EDGE_TYPE_NONE,
             SubtitleEdge.Outline to CaptionStyleCompat.EDGE_TYPE_OUTLINE,
