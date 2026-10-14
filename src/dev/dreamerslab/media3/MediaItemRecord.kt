@@ -1,5 +1,6 @@
 package dev.dreamerslab.media3
 
+import android.os.Bundle
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -22,34 +23,32 @@ internal class InvalidRecordException(message: String) : Exception(message)
 internal object MediaItemRecord {
 
     fun fromYail(value: Any?, path: String, mediaId: String = MediaItems.newMediaId()): MediaItem {
-        val fields = Fields(value, path, MediaItemField.values())
-        val drm = fields.record(MediaItemField.DrmConfiguration, DrmConfigurationField.values())
+        val fields = Fields(value, path, MediaItemField.entries)
+        val drm = fields.record(MediaItemField.DrmConfiguration, DrmConfigurationField.entries)
         val clearKeysLicense = drm?.let(::clearKeysLicense)
-        val item = MediaItem.Builder()
+        val thumbnails = fields.record(MediaItemField.Thumbnails, ThumbnailsField.entries)?.let(::thumbnails)
+        return MediaItem.Builder()
             .setMediaId(mediaId)
             .setUri(MediaItems.resolve(fields.requiredText(MediaItemField.Uri)))
-            .setMimeType(fields.option(MediaItemField.MimeType, MediaType.values())?.let { MIME_TYPES[it] })
+            .setMimeType(fields.option(MediaItemField.MimeType, MediaType.entries)?.let { MIME_TYPES[it] })
             .setMediaMetadata(
                 MediaMetadata.Builder()
                     .setTitle(fields.text(MediaItemField.Title))
                     .setArtist(fields.text(MediaItemField.Artist))
                     .setDescription(fields.text(MediaItemField.Description))
                     .setArtworkUri(fields.text(MediaItemField.ArtworkUri)?.let(MediaItems::resolve))
+                    .setExtras(extras(thumbnails, clearKeysLicense))
                     .build()
             )
             .setDrmConfiguration(drm?.takeIf { clearKeysLicense == null }?.let(::drm))
             .setSubtitleConfigurations(
-                fields.records(MediaItemField.SubtitleConfigurations, SubtitleConfigurationField.values()).map(::subtitle)
+                fields.records(MediaItemField.SubtitleConfigurations, SubtitleConfigurationField.entries).map(::subtitle)
             )
             .setClippingConfiguration(
-                fields.record(MediaItemField.ClippingConfiguration, ClippingConfigurationField.values())?.let(::clipping)
+                fields.record(MediaItemField.ClippingConfiguration, ClippingConfigurationField.entries)?.let(::clipping)
                     ?: MediaItem.ClippingConfiguration.UNSET
             )
             .build()
-        val thumbnails = fields.record(MediaItemField.Thumbnails, ThumbnailsField.values())?.let(::thumbnails)
-        return item
-            .let { withThumbnails -> thumbnails?.let { MediaItems.withThumbnails(withThumbnails, it) } ?: withThumbnails }
-            .let { withKeys -> clearKeysLicense?.let { ClearKeys.withLicense(withKeys, it) } ?: withKeys }
     }
 
     fun toYail(item: MediaItem): YailDictionary = YailDictionary().apply {
@@ -74,27 +73,28 @@ internal object MediaItemRecord {
         ThumbnailSource.from(item.mediaMetadata.extras)?.let { setField(MediaItemField.Thumbnails, thumbnailsToYail(it)) }
     }
 
-    fun YailDictionary.setField(field: OptionList<String>, value: Any) {
+    private fun YailDictionary.setField(field: OptionList<String>, value: Any) {
         put(field.toUnderlyingValue(), if (value is OptionList<*>) value.toUnderlyingValue() else value)
     }
 
-    fun YailDictionary.getField(field: OptionList<String>): Any? = get(field.toUnderlyingValue())
+    private fun YailDictionary.getField(field: OptionList<String>): Any? = get(field.toUnderlyingValue())
 
     fun YailDictionary.child(field: MediaItemField): YailDictionary =
         getField(field) as? YailDictionary ?: YailDictionary().also { setField(field, it) }
 
     fun YailDictionary.subtitle(index: Int): YailDictionary {
         val subtitles = (getField(MediaItemField.SubtitleConfigurations) as? YailList)?.toArray().orEmpty()
-        return subtitles.getOrNull(index - 1) as? YailDictionary ?: throw InvalidRecordException(
-            "mediaItem.subtitleConfigurations has no subtitle $index (1 to ${subtitles.size})."
-        )
+        val path = "mediaItem.${MediaItemField.SubtitleConfigurations.toUnderlyingValue()}"
+        if (subtitles.isEmpty()) throw InvalidRecordException("$path is empty.")
+        return subtitles.getOrNull(index - 1) as? YailDictionary
+            ?: throw InvalidRecordException("$path has no subtitle $index (1 to ${subtitles.size}).")
     }
 
     fun update(item: MediaItem, change: MediaItemRecord.(YailDictionary) -> Unit): MediaItem =
         fromYail(toYail(item).also { change(it) }, "mediaItem", item.mediaId)
 
     private fun drm(fields: Fields<DrmConfigurationField>): MediaItem.DrmConfiguration {
-        val scheme = fields.option(DrmConfigurationField.Scheme, DrmScheme.values()) ?: DrmScheme.Widevine
+        val scheme = fields.option(DrmConfigurationField.Scheme, DrmScheme.entries) ?: DrmScheme.Widevine
         return MediaItems.drm(
             DRM_SCHEMES.getValue(scheme),
             fields.text(DrmConfigurationField.LicenseUri).orEmpty(),
@@ -104,16 +104,22 @@ internal object MediaItemRecord {
 
     private fun clearKeysLicense(fields: Fields<DrmConfigurationField>): String? {
         val keys = fields.textDictionary(DrmConfigurationField.ClearKeys) ?: return null
-        fields.requireOneOf(DrmConfigurationField.ClearKeys, DrmConfigurationField.LicenseUri)
-        val scheme = fields.option(DrmConfigurationField.Scheme, DrmScheme.values())
+        fields.rejectBoth(DrmConfigurationField.ClearKeys, DrmConfigurationField.LicenseUri)
+        fields.rejectBoth(DrmConfigurationField.ClearKeys, DrmConfigurationField.LicenseRequestHeaders)
+        val scheme = fields.option(DrmConfigurationField.Scheme, DrmScheme.entries)
         if (scheme != null && scheme != DrmScheme.ClearKey) {
-            throw fields.error("clearKeys only works with the ClearKey scheme.")
+            throw fields.error(DrmConfigurationField.ClearKeys, "only works with the ClearKey scheme.")
         }
         return try {
             ClearKeys.license(keys)
         } catch (e: IllegalArgumentException) {
-            throw fields.error("clearKeys: ${e.message}")
+            throw fields.error(DrmConfigurationField.ClearKeys, e.message.orEmpty())
         }
+    }
+
+    private fun extras(thumbnails: ThumbnailSource?, clearKeysLicense: String?): Bundle? {
+        val thumbnailExtras = thumbnails?.toExtras(null)
+        return clearKeysLicense?.let { ClearKeys.toExtras(it, thumbnailExtras) } ?: thumbnailExtras
     }
 
     private fun thumbnails(fields: Fields<ThumbnailsField>): ThumbnailSource {
@@ -174,7 +180,7 @@ internal object MediaItemRecord {
         setField(ClippingConfigurationField.EndPositionMs, clipping.endPositionMs.takeIf { it != C.TIME_END_OF_SOURCE } ?: 0L)
     }
 
-    private class Fields<F : OptionList<String>>(value: Any?, private val path: String, private val choices: Array<F>) {
+    private class Fields<F : OptionList<String>>(value: Any?, private val path: String, private val choices: List<F>) {
 
         private val group = choices.first().javaClass.simpleName
 
@@ -187,7 +193,7 @@ internal object MediaItemRecord {
             if (key is Enum<*> && key is OptionList<*> && choices.none { it === key }) {
                 throw InvalidRecordException("$path: ${key.javaClass.simpleName} ${key.name} doesn't belong here. Use $group keys.")
             }
-            val name = (key as? OptionList<*>)?.toUnderlyingValue()?.toString() ?: key.toString()
+            val name = nameOf(key)
             return choices.firstOrNull { it.toUnderlyingValue() == name } ?: throw InvalidRecordException(
                 "$path: \"$name\" isn't a $group. Use ${choices.joinToString { it.toUnderlyingValue() }}."
             )
@@ -209,9 +215,9 @@ internal object MediaItemRecord {
             else -> throw invalid(field, "a number")
         }
 
-        fun <T : OptionList<String>> option(field: F, options: Array<T>): T? {
+        fun <T : OptionList<String>> option(field: F, options: List<T>): T? {
             val value = values[field] ?: return null
-            val name = (value as? OptionList<*>)?.toUnderlyingValue()?.toString() ?: value.toString()
+            val name = nameOf(value)
             return options.firstOrNull { it.toUnderlyingValue() == name } ?: throw InvalidRecordException(
                 "$path.${field.toUnderlyingValue()}: \"$name\" isn't one of ${options.joinToString { it.toUnderlyingValue() }}."
             )
@@ -223,16 +229,16 @@ internal object MediaItemRecord {
             else -> throw invalid(field, "a dictionary")
         }
 
-        fun requireOneOf(field: F, other: F) {
+        fun rejectBoth(field: F, other: F) {
             if (values[field] != null && values[other] != null) {
-                throw error("use ${field.toUnderlyingValue()} or ${other.toUnderlyingValue()}, not both.")
+                throw InvalidRecordException("$path: use ${field.toUnderlyingValue()} or ${other.toUnderlyingValue()}, not both.")
             }
         }
 
-        fun <G : OptionList<String>> record(field: F, choices: Array<G>): Fields<G>? =
+        fun <G : OptionList<String>> record(field: F, choices: List<G>): Fields<G>? =
             values[field]?.let { Fields(it, "$path.${field.toUnderlyingValue()}", choices) }
 
-        fun <G : OptionList<String>> records(field: F, choices: Array<G>): List<Fields<G>> = when (val value = values[field]) {
+        fun <G : OptionList<String>> records(field: F, choices: List<G>): List<Fields<G>> = when (val value = values[field]) {
             null -> emptyList()
             is YailList -> value.toArray().mapIndexed { index, entry ->
                 Fields(entry, "$path.${field.toUnderlyingValue()}[${index + 1}]", choices)
@@ -242,7 +248,11 @@ internal object MediaItemRecord {
 
         fun error(message: String) = InvalidRecordException("$path: $message")
 
+        fun error(field: F, message: String) = InvalidRecordException("$path.${field.toUnderlyingValue()}: $message")
+
         private fun invalid(field: F, expected: String) =
             InvalidRecordException("$path.${field.toUnderlyingValue()} must be $expected.")
+
+        private fun nameOf(value: Any?): String = (value as? OptionList<*>)?.toUnderlyingValue()?.toString() ?: value.toString()
     }
 }

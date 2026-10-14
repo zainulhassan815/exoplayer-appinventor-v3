@@ -24,10 +24,11 @@ internal object ClearKeys {
         return JSONObject().put("keys", JSONArray(entries)).put("type", "temporary").toString()
     }
 
-    fun withLicense(item: MediaItem, license: String): MediaItem {
-        val extras = Bundle(item.mediaMetadata.extras ?: Bundle()).apply { putString(KEY_LICENSE, license) }
-        return item.buildUpon().setMediaMetadata(item.mediaMetadata.buildUpon().setExtras(extras).build()).build()
-    }
+    fun withLicense(item: MediaItem, license: String): MediaItem = item.buildUpon()
+        .setMediaMetadata(item.mediaMetadata.buildUpon().setExtras(toExtras(license, item.mediaMetadata.extras)).build())
+        .build()
+
+    fun toExtras(license: String, extras: Bundle?): Bundle = Bundle(extras ?: Bundle()).apply { putString(KEY_LICENSE, license) }
 
     fun keys(item: MediaItem): Map<String, String>? {
         val license = item.mediaMetadata.extras?.getString(KEY_LICENSE) ?: return null
