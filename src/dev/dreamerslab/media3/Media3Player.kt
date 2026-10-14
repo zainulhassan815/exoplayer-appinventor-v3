@@ -943,7 +943,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         player.shuffleModeEnabled = shuffle
     }
 
-    @SimpleProperty(description = "Starts playing as soon as media is played or added.", category = PropertyCategory.BEHAVIOR)
+    @SimpleProperty(description = "Starts playing as soon as Play, PlayFrom or SetMediaItems loads media.", category = PropertyCategory.BEHAVIOR)
     fun Autoplay(): Boolean = autoplay
 
     @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_BOOLEAN, defaultValue = "True")

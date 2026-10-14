@@ -126,9 +126,18 @@ Events: `PlaybackStateChanged`, `IsPlayingChanged`, `BufferingChanged`, `Positio
 `VideoSizeChanged`, `FirstFrameRendered`, `SpeedChanged`, `RepeatModeChanged`, `ShuffleModeEnabledChanged`, `FullscreenChanged`, `DialogClosed`, `DownloadChanged`, `FrameCaptured`, `SubtitleChanged`,
 `DeviceVolumeChanged`,
 `PlayerError(message, errorCode, category)` with category Network, NotFound, Format, Decoder,
-DRM or Other. An index outside the queue raises `Screen.ErrorOccurred`
-with error number 30101, one outside a track list with 30102, a malformed ClearKey key with 30105, and
-an invalid media item with 30106.
+DRM or Other.
+
+Mistakes in blocks raise `Screen.ErrorOccurred` with these error numbers:
+
+| Error | Raised when |
+|---|---|
+| 30101 | An index is outside the queue |
+| 30102 | An index is outside a track list or the equalizer bands, or no equalizer preset has the name |
+| 30103 | `CaptureFrame` can't capture or save a frame |
+| 30104 | The deprecated `SetThumbnails` gets fewer than 1 column or row, or no interval |
+| 30105 | The deprecated `SetClearKeys` gets a malformed key |
+| 30106 | A media item is invalid |
 
 Deprecated blocks, kept working for existing projects but hidden from the blocks drawer:
 `AddSubtitle`, `ClipMedia`, `SetDrm`, `SetClearKeys`, `SetMediaType`, `SetMetadata`,
@@ -184,9 +193,9 @@ extension ships. Build an APK to test.
 playing YouTube outside its official players is against YouTube's terms. A Drive share link
 opens a web page; use a direct download link to the file instead.
 
-**Can it cast to a TV, or play in picture-in-picture?** No. Casting needs Google Play
-Services, and picture-in-picture needs a setting on the screen's activity that extensions
-can't change.
+**Can it cast to a TV, show ads, or play in picture-in-picture?** No. Casting and IMA ads
+need Google Play Services libraries and setup App Inventor doesn't provide, and
+picture-in-picture needs a setting on the screen's activity that extensions can't change.
 
 **Why can't I seek in some MKV files?** The file has no seek index (cues). That's a
 property of the file; remuxing it, for example with `ffmpeg -i in.mkv -c copy out.mkv`,
