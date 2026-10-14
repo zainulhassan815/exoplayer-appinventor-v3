@@ -1,6 +1,6 @@
 # This is the version name of your extension. You should update it everytime you
 # publish a new version of your extension.
-version: '3.1.1'
+version: '3.2.0'
 
 # The minimum Android SDK level your extension supports. Minimum SDK defined in
 # AndroidManifest.xml is ignored, you should always define it here.
