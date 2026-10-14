@@ -356,6 +356,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
             null
         }
 
+    @Deprecated("Use a media item with MediaItemField.SubtitleConfigurations.")
     @SimpleFunction(
         description = "Adds a subtitle file (WebVTT, SRT, TTML or SSA) to the most recently added media. " +
             "Language is a code like \"en\"; label is the name shown in the subtitles menu."
@@ -363,12 +364,14 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     fun AddSubtitle(source: String, language: String, label: String) =
         updateLastAdded { MediaItems.withSubtitle(it, source, language, label) }
 
+    @Deprecated("Use a media item with MediaItemField.ClippingConfiguration.")
     @SimpleFunction(
         description = "Plays only part of the most recently added media, from the start to the end position in " +
             "milliseconds. An end of 0 plays until the end of the media."
     )
     fun ClipMedia(startMs: Long, endMs: Long) = updateLastAdded { MediaItems.clipped(it, startMs, endMs) }
 
+    @Deprecated("Use a media item with MediaItemField.DrmConfiguration.")
     @SimpleFunction(
         description = "Plays the most recently added media with DRM. Headers is a dictionary of HTTP headers sent " +
             "with license requests; pass an empty dictionary if the license server needs none."
@@ -379,6 +382,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         updateLastAdded { MediaItems.withDrm(it, uuid, licenseUrl, requestHeaders) }
     }
 
+    @Deprecated("Use a media item with DrmConfigurationField.ClearKeys.")
     @SimpleFunction(
         description = "Plays the most recently added media with ClearKey DRM using known keys, without a license " +
             "server. Keys is a dictionary of key IDs to keys, each 32 hex digits."
@@ -390,6 +394,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         updateLastAdded { ClearKeys.withLicense(it, license) }
     }
 
+    @Deprecated("Use a media item with MediaItemField.MimeType.")
     @SimpleFunction(
         description = "Sets the format of the most recently added media, for URLs that don't end in a known " +
             "extension."
@@ -399,6 +404,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         updateLastAdded { MediaItems.withMimeType(it, MediaItems.MIME_TYPES[mediaType]) }
     }
 
+    @Deprecated("Use a media item with MediaItemField.Artist, Description and ArtworkUri.")
     @SimpleFunction(
         description = "Sets the artist, description and artwork of the most recently added media. Artwork is a " +
             "URL or asset name."
@@ -406,6 +412,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     fun SetMetadata(artist: String, description: String, artworkUrl: String) =
         updateLastAdded { MediaItems.withMetadata(it, artist, description, artworkUrl) }
 
+    @Deprecated("Use a media item with MediaItemField.Thumbnails.")
     @SimpleFunction(
         description = "Shows thumbnails while scrubbing the most recently added media. The sprite is one image (URL " +
             "or asset) with the given columns and rows of equally sized thumbnails, one every intervalSeconds, " +
@@ -420,6 +427,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         updateLastAdded { MediaItems.withThumbnails(it, grid) }
     }
 
+    @Deprecated("Use a media item with MediaItemField.Thumbnails.")
     @SimpleFunction(
         description = "Shows thumbnails while scrubbing the most recently added media, from a WebVTT thumbnail " +
             "track (URL or asset) like the storyboard.vtt files video services provide. Each cue points to an " +
