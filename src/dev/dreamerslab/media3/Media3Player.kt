@@ -413,6 +413,12 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         player.play()
     }
 
+    @SimpleFunction(description = "Pauses playback, keeping the position and the buffered media. Resume plays on.")
+    fun Pause() = player.pause()
+
+    @SimpleFunction(description = "Seeks to the given position in milliseconds in the current media.")
+    fun SeekTo(positionMs: Long) = player.seekTo(positionMs)
+
     @SimpleFunction(description = "Stops playback and releases the media, keeping the queue. Resume plays it again.")
     fun Stop() = player.stop()
 
