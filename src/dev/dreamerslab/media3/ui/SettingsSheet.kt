@@ -10,6 +10,8 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 
 internal class Choice(val label: String, val selected: Boolean, val select: () -> Unit)
 
@@ -50,6 +52,11 @@ internal class SettingsSheet(activity: Activity, private val settings: PlaybackS
         setOnClickListener { dismiss() }
         isFocusable = false
         addView(panel)
+        ViewCompat.setOnApplyWindowInsetsListener(this) { _, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+            panel.setPadding(bars.left, 0, bars.right, bars.bottom)
+            insets
+        }
     }
     private val dialog = Dialog(activity, R.style.Theme_Translucent_NoTitleBar).apply {
         setContentView(scrim)
