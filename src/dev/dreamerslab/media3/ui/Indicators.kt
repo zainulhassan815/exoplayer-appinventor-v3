@@ -67,6 +67,14 @@ internal class DoubleTapIndicator(context: Context, private val forward: Boolean
         postDelayed(hide, 700)
     }
 
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        removeCallbacks(hide)
+        pulse.cancel()
+        accumulated = 0
+        alpha = 0f
+    }
+
     override fun onDraw(canvas: Canvas) {
         val w = width.toFloat()
         val h = height.toFloat()
