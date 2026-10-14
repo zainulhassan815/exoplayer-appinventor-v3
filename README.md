@@ -99,6 +99,9 @@ one of Auto, HLS, DASH, SmoothStreaming, RTSP, Progressive.`
 
 ## Blocks
 
+[docs/blocks.md](docs/blocks.md) shows every block with its image and description; each image
+contains its block, so you can drag it into your workspace. An overview:
+
 | Functions | |
 |---|---|
 | `Create(arrangement)` | Shows the player inside the arrangement |
@@ -222,7 +225,10 @@ python3 samples/package.py
 ```
 
 The extension and its block documentation are generated in the `out` directory, and the
-second command packs the sample project with it. `design/player-mockup.html` is the
+second command packs the sample project with it. After changing blocks, export the images
+of new or changed blocks from App Inventor's blocks editor into `docs/images/blocks`
+(named like `Media3Player1-Play.png`), then regenerate [docs/blocks.md](docs/blocks.md)
+with `python3 docs/blocks.py`; it fails if a block has no image or no group. `design/player-mockup.html` is the
 interactive mockup the player UI is built from.
 
 GitHub Actions builds every push. To release, update `version` in `rush.yml`, commit, and
