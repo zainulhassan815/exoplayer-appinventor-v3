@@ -147,7 +147,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     private var isBuffering = false
     private val positionUpdates = object : Runnable {
         override fun run() {
-            PositionChanged(player.currentPosition, player.duration.takeIf { it != C.TIME_UNSET } ?: 0)
+            PositionChanged(player.currentPosition, Duration())
             mainThread.postDelayed(this, positionUpdateInterval.toLong())
         }
     }
@@ -212,8 +212,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     )
     fun PlayFrom(source: String, title: String, positionMs: Long) {
         player.setMediaItem(newItem(source, title), positionMs)
-        player.prepare()
-        player.playWhenReady = autoplay
+        startPlayback()
     }
 
     @SimpleFunction(description = "Adds the media at the given url or asset name to the end of the queue.")
@@ -224,29 +223,19 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
             "Index starts at 1; one more than the queue length adds it to the end."
     )
     fun InsertAt(index: Int, source: String, title: String) {
-        if (index !in 1..player.mediaItemCount + 1) {
-            reportNotInQueue("InsertAt", index)
-            return
-        }
+        if (!inQueue("InsertAt", index, player.mediaItemCount + 1)) return
         insert(index - 1, source, title)
     }
 
     @SimpleFunction(description = "Removes the media at the given position from the queue. Index starts at 1.")
     fun RemoveAt(index: Int) {
-        if (index !in 1..player.mediaItemCount) {
-            reportNotInQueue("RemoveAt", index)
-            return
-        }
+        if (!inQueue("RemoveAt", index)) return
         player.removeMediaItem(index - 1)
     }
 
     @SimpleFunction(description = "Moves the media at one position in the queue to another. Indexes start at 1.")
     fun MoveItem(from: Int, to: Int) {
-        val invalid = listOf(from, to).firstOrNull { it !in 1..player.mediaItemCount }
-        if (invalid != null) {
-            reportNotInQueue("MoveItem", invalid)
-            return
-        }
+        if (!inQueue("MoveItem", from) || !inQueue("MoveItem", to)) return
         player.moveMediaItem(from - 1, to - 1)
     }
 
@@ -258,8 +247,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         val items = readMediaItemList("SetMediaItems", mediaItems) ?: return
         rememberLastAdded(items)
         player.setMediaItems(items)
-        player.prepare()
-        player.playWhenReady = autoplay
+        startPlayback()
     }
 
     @SimpleFunction(
@@ -267,10 +255,10 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
             "MediaItemField choices; only Uri is required."
     )
     fun AddMediaItem(mediaItem: YailDictionary) {
-        val item = readMediaItems("AddMediaItem") { MediaItemRecord.fromYail(mediaItem, "mediaItem") } ?: return
+        val item = readMediaItem("AddMediaItem", mediaItem) ?: return
         rememberLastAdded(listOf(item))
         player.addMediaItem(item)
-        if (player.playbackState == Player.STATE_IDLE) player.prepare()
+        prepareIfIdle()
     }
 
     @SimpleFunction(description = "Adds a list of media items to the end of the queue, like AddMediaItem for each.")
@@ -278,7 +266,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         val items = readMediaItemList("AddMediaItems", mediaItems) ?: return
         rememberLastAdded(items)
         player.addMediaItems(items)
-        if (player.playbackState == Player.STATE_IDLE) player.prepare()
+        prepareIfIdle()
     }
 
     @SimpleFunction(
@@ -286,23 +274,17 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
             "the start if it was the current media. Index starts at 1."
     )
     fun ReplaceMediaItem(index: Int, mediaItem: YailDictionary) {
-        if (index !in 1..player.mediaItemCount) {
-            reportNotInQueue("ReplaceMediaItem", index)
-            return
-        }
-        val item = readMediaItems("ReplaceMediaItem") { MediaItemRecord.fromYail(mediaItem, "mediaItem") } ?: return
+        if (!inQueue("ReplaceMediaItem", index)) return
+        val item = readMediaItem("ReplaceMediaItem", mediaItem) ?: return
         val isCurrent = index - 1 == player.currentMediaItemIndex
         replaceItemAt(index - 1, item, 0)
         QueueChanged(player.mediaItemCount)
-        if (isCurrent) MediaChanged(index, item.mediaMetadata.title?.toString() ?: "")
+        if (isCurrent) MediaChanged(index, item.mediaMetadata.titleText)
     }
 
     @SimpleFunction(description = "The media item at the given position in the queue, as a dictionary. Index starts at 1.")
     fun GetMediaItemAt(index: Int): YailDictionary {
-        if (index !in 1..player.mediaItemCount) {
-            reportNotInQueue("GetMediaItemAt", index)
-            return YailDictionary()
-        }
+        if (!inQueue("GetMediaItemAt", index)) return YailDictionary()
         return MediaItemRecord.toYail(player.getMediaItemAt(index - 1))
     }
 
@@ -343,19 +325,19 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         updateMediaItem("SetThumbnailsField", index) { it.child(MediaItemField.Thumbnails)[field] = value }
 
     private fun updateMediaItem(function: String, index: Int, change: MediaItemRecord.(YailDictionary) -> Unit) {
-        if (index !in 1..player.mediaItemCount) {
-            reportNotInQueue(function, index)
-            return
-        }
-        val item = readMediaItems(function) { MediaItemRecord.update(player.getMediaItemAt(index - 1), change) } ?: return
+        if (!inQueue(function, index)) return
+        val item = orReportInvalid(function) { MediaItemRecord.update(player.getMediaItemAt(index - 1), change) } ?: return
         replaceItemAt(index - 1, item, player.currentPosition)
     }
 
-    private fun readMediaItemList(function: String, mediaItems: YailList): List<MediaItem>? = readMediaItems(function) {
+    private fun readMediaItem(function: String, mediaItem: YailDictionary): MediaItem? =
+        orReportInvalid(function) { MediaItemRecord.fromYail(mediaItem, "mediaItem") }
+
+    private fun readMediaItemList(function: String, mediaItems: YailList): List<MediaItem>? = orReportInvalid(function) {
         mediaItems.toArray().mapIndexed { index, item -> MediaItemRecord.fromYail(item, "mediaItems[${index + 1}]") }
     }
 
-    private fun <T> readMediaItems(function: String, read: () -> T): T? =
+    private fun <T> orReportInvalid(function: String, read: () -> T): T? =
         try {
             read()
         } catch (e: InvalidRecordException) {
@@ -533,7 +515,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
 
     @SimpleFunction(description = "Resumes playback.")
     fun Resume() {
-        if (player.playbackState == Player.STATE_IDLE) player.prepare()
+        prepareIfIdle()
         player.play()
     }
 
@@ -860,7 +842,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     }
 
     @SimpleProperty(
-        description = "Seconds skipped by the rewind and forward buttons and double taps.",
+        description = "Seconds skipped by the rewind and forward buttons and double taps, at least 1.",
         category = PropertyCategory.BEHAVIOR
     )
     fun SeekIncrement(): Int = seekIncrement
@@ -881,8 +863,8 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     @DesignerProperty(editorType = PropertyTypeConstants.PROPERTY_TYPE_NON_NEGATIVE_INTEGER, defaultValue = "3000")
     @SimpleProperty
     fun ControlsTimeout(milliseconds: Int) {
-        controlsTimeout = milliseconds
-        ui?.controlsTimeoutMs = milliseconds.toLong()
+        controlsTimeout = milliseconds.coerceAtLeast(0)
+        ui?.controlsTimeoutMs = controlsTimeout.toLong()
     }
 
     @SimpleProperty(description = "Double tap the sides to rewind or forward, and the middle to play or pause.", category = PropertyCategory.BEHAVIOR)
@@ -1331,7 +1313,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
 
     @SimpleProperty(description = "Titles of the media in the queue, in order.")
     fun Queue(): YailList =
-        YailList.makeList((0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaMetadata.title?.toString() ?: "" })
+        YailList.makeList((0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaMetadata.titleText })
 
     @SimpleProperty(description = "Position of the current media in the queue, starting at 1, or 0 if the queue is empty.")
     fun CurrentIndex(): Int = if (player.mediaItemCount == 0) 0 else player.currentMediaItemIndex + 1
@@ -1402,7 +1384,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     fun BandwidthEstimate(): Long = DefaultBandwidthMeter.getSingletonInstance(activity).bitrateEstimate / 1000
 
     @SimpleProperty(description = "Artist of the current media.")
-    fun Artist(): String = player.mediaMetadata.artist?.toString() ?: ""
+    fun Artist(): String = player.mediaMetadata.artistText
 
     @SimpleProperty(description = "Whether media is playing.")
     fun IsPlaying(): Boolean = player.isPlaying
@@ -1423,7 +1405,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     fun Duration(): Long = player.duration.takeIf { it != C.TIME_UNSET } ?: 0
 
     @SimpleProperty(description = "Title of the current media.")
-    fun Title(): String = player.mediaMetadata.title?.toString() ?: ""
+    fun Title(): String = player.mediaMetadata.titleText
 
     @SimpleEvent(description = "The playback state changed to IDLE, BUFFERING, READY or ENDED.")
     fun PlaybackStateChanged(state: String) {
@@ -1606,7 +1588,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     }
 
     override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) =
-        MetadataChanged(mediaMetadata.title?.toString() ?: "", mediaMetadata.artist?.toString() ?: "")
+        MetadataChanged(mediaMetadata.titleText, mediaMetadata.artistText)
 
     override fun onTracksChanged(changed: Tracks) {
         val mediaId = player.currentMediaItem?.mediaId
@@ -1622,7 +1604,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     }
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-        if (mediaItem != null && !updatingQueue) MediaChanged(player.currentMediaItemIndex + 1, mediaItem.mediaMetadata.title?.toString() ?: "")
+        if (mediaItem != null && !updatingQueue) MediaChanged(player.currentMediaItemIndex + 1, mediaItem.mediaMetadata.titleText)
     }
 
     override fun onInitialize() {
@@ -1727,11 +1709,23 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
 
     private fun insert(index: Int, source: String, title: String) {
         player.addMediaItem(index, newItem(source, title))
+        prepareIfIdle()
+    }
+
+    private fun startPlayback() {
+        player.prepare()
+        player.playWhenReady = autoplay
+    }
+
+    private fun prepareIfIdle() {
         if (player.playbackState == Player.STATE_IDLE) player.prepare()
     }
 
-    private fun reportNotInQueue(function: String, index: Int) =
+    private fun inQueue(function: String, index: Int, size: Int = player.mediaItemCount): Boolean {
+        if (index in 1..size) return true
         reportError(function, ERROR_NOT_IN_QUEUE, "Index $index is not in the queue (1 to ${player.mediaItemCount}).")
+        return false
+    }
 
     private fun updateLastAdded(update: (MediaItem) -> MediaItem) {
         val index = (0 until player.mediaItemCount).firstOrNull { player.getMediaItemAt(it).mediaId == lastAddedId } ?: return
@@ -1747,10 +1741,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     }
 
     private fun seekToItem(function: String, index: Int, positionMs: Long) {
-        if (index !in 1..player.mediaItemCount) {
-            reportNotInQueue(function, index)
-            return
-        }
+        if (!inQueue(function, index)) return
         player.seekTo(index - 1, positionMs)
         Resume()
     }
@@ -1826,6 +1817,43 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
         player.setAudioAttributes(AudioAttributes.DEFAULT, audioFocus && !silent)
     }
 
+    private fun dispatch(event: String, vararg args: Any) {
+        postEvent(event) { EventDispatcher.dispatchEvent(this, event, *args) }
+    }
+
+    private fun postEvent(event: String, fire: () -> Unit) {
+        mainThread.post {
+            if (eventsBeforeInitialize.isEmpty() && form.canDispatchEvent(this, event)) fire()
+            else eventsBeforeInitialize.addLast(fire)
+        }
+    }
+
+    private fun applySettings() {
+        ui?.apply {
+            accent = accentColor
+            seekIncrementMs = seekIncrement * 1000L
+            controlsTimeoutMs = controlsTimeout.toLong()
+            enabledGestures = this@Media3Player.enabledGestures
+            resizeMode = this@Media3Player.resizeMode
+            fullscreenOrientation = ORIENTATIONS[this@Media3Player.fullscreenOrientation]
+            captionStyle = this@Media3Player.captionStyle()
+            hiddenControls = this@Media3Player.hiddenControls
+            playerBackground = this@Media3Player.playerBackground
+            controlColor = this@Media3Player.controlColor
+            scrimColor = this@Media3Player.scrimColor
+            seekBarTrackColor = this@Media3Player.seekBarTrackColor
+            seekBarBufferedColor = this@Media3Player.seekBarBufferedColor
+            cornerRadius = cornerRadiusPx()
+            showRemainingTime = this@Media3Player.showRemainingTime
+            posterUri = posterUri()
+            controlsEnabled = showControls
+            keepScreenOnWhilePlaying = this@Media3Player.keepScreenOn
+            subtitleScale = subtitleSize / 100f
+            subtitleBottomFraction = subtitleBottomMargin / 100f
+            chapters = this@Media3Player.chapters.toList()
+        }
+    }
+
     private companion object {
         const val ERROR_NOT_IN_QUEUE = 30101
         const val ERROR_NOT_IN_LIST = 30102
@@ -1872,41 +1900,8 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
             FullscreenOrientation.Sensor to ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR,
         )
     }
-
-    private fun dispatch(event: String, vararg args: Any) {
-        postEvent(event) { EventDispatcher.dispatchEvent(this, event, *args) }
-    }
-
-    private fun postEvent(event: String, fire: () -> Unit) {
-        mainThread.post {
-            if (eventsBeforeInitialize.isEmpty() && form.canDispatchEvent(this, event)) fire()
-            else eventsBeforeInitialize.addLast(fire)
-        }
-    }
-
-    private fun applySettings() {
-        ui?.apply {
-            accent = accentColor
-            seekIncrementMs = seekIncrement * 1000L
-            controlsTimeoutMs = controlsTimeout.toLong()
-            enabledGestures = this@Media3Player.enabledGestures
-            resizeMode = this@Media3Player.resizeMode
-            fullscreenOrientation = ORIENTATIONS[this@Media3Player.fullscreenOrientation]
-            captionStyle = this@Media3Player.captionStyle()
-            hiddenControls = this@Media3Player.hiddenControls
-            playerBackground = this@Media3Player.playerBackground
-            controlColor = this@Media3Player.controlColor
-            scrimColor = this@Media3Player.scrimColor
-            seekBarTrackColor = this@Media3Player.seekBarTrackColor
-            seekBarBufferedColor = this@Media3Player.seekBarBufferedColor
-            cornerRadius = cornerRadiusPx()
-            showRemainingTime = this@Media3Player.showRemainingTime
-            posterUri = posterUri()
-            controlsEnabled = showControls
-            keepScreenOnWhilePlaying = this@Media3Player.keepScreenOn
-            subtitleScale = subtitleSize / 100f
-            subtitleBottomFraction = subtitleBottomMargin / 100f
-            chapters = this@Media3Player.chapters.toList()
-        }
-    }
 }
+
+private val MediaMetadata.titleText: String get() = title?.toString().orEmpty()
+
+private val MediaMetadata.artistText: String get() = artist?.toString().orEmpty()
