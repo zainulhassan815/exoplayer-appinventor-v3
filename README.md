@@ -25,7 +25,8 @@ real AARs with their resources.
    fixed Height, and a **Media3Player** component.
 3. In `Screen1.Initialize`, call `Media3Player1.Create(VerticalArrangement1)`.
 4. Call `Play(source, title)`, and `AddToQueue(source, title)` for more media. Sources
-   are URLs or names of media assets uploaded to the project.
+   are URLs or names of media assets uploaded to the project. For subtitles, DRM and other
+   settings, use [media items](#media-items).
 5. Build an APK to try it. The AI Companion can't load the Media3 libraries the
    extension ships, so the player doesn't work in it.
 
@@ -49,11 +50,48 @@ adds about 12 MB to apps.
 - Equalizer, bass boost, loudness boost, mono and left/right balance
 - Background playback with a media notification, lock screen and headset controls
 - Queue with an up next countdown, replay, error and retry states, and a controls lock
+- Media items as dictionaries: build playlists with blocks or load them from JSON
 - MP4, HLS, DASH, SmoothStreaming and RTSP, live streams with a LIVE indicator, DRM
   (Widevine, ClearKey, PlayReady), custom HTTP headers; side-loaded WebVTT, SRT, TTML
   and SSA subtitles
 - Accent color, resize mode, fullscreen orientation, repeat mode and behavior
   configurable from the designer
+
+## Media items
+
+A media item is a dictionary that describes one media and how to play it. Build it with
+App Inventor's `make a dictionary` block and take each key from a dropdown, so field names
+can't be misspelled; only the uri is required. Pass items to `SetMediaItems`,
+`AddMediaItems`, `AddMediaItem` or `ReplaceMediaItem`, and read them back with
+`GetMediaItemAt`.
+
+<img src="docs/screenshots/media-items.png" alt="A queue of media items built with dictionary blocks and field dropdowns">
+
+The keys come from five dropdowns, one for each part of a media item, named after
+Media3's `MediaItem` classes:
+
+| Dropdown | Fields |
+|---|---|
+| `MediaItemField` | `Uri`, `Title`, `Artist`, `Description`, `ArtworkUri`, `MimeType` (a `MediaType`), `DrmConfiguration`, `SubtitleConfigurations` (a list), `ClippingConfiguration`, `Thumbnails` |
+| `DrmConfigurationField` | `Scheme` (a `DrmScheme`, Widevine when missing), `LicenseUri`, `LicenseRequestHeaders`, `ClearKeys` (key ID → key, in hex, instead of a license server) |
+| `SubtitleConfigurationField` | `Uri`, `Language`, `Label` |
+| `ClippingConfigurationField` | `StartPositionMs`, `EndPositionMs` (0 plays to the end) |
+| `ThumbnailsField` | `Uri` of a WebVTT thumbnail track (like `storyboard.vtt`), or of a sprite sheet with `Columns`, `Rows` and `IntervalMs` |
+
+Playlists decoded from JSON work as they are, with the field names as text keys:
+
+```json
+{ "uri": "https://example.com/movie.mpd", "title": "Movie", "mimeType": "DASH",
+  "drmConfiguration": { "scheme": "Widevine", "licenseUri": "https://example.com/license" },
+  "subtitleConfigurations": [ { "uri": "https://example.com/en.vtt", "language": "en" } ] }
+```
+
+`SetMediaItemField`, `SetDrmConfigurationField`, `SetSubtitleConfigurationField`,
+`SetClippingConfigurationField` and `SetThumbnailsField` change one field of a media item
+already in the queue. Every item is checked when it's passed to the player: an unknown or
+misplaced key, a missing uri or a value of the wrong type raises `Screen.ErrorOccurred`
+with error 30106 and a message naming the field, like `mediaItems[3].mimeType: "HSL" isn't
+one of Auto, HLS, DASH, SmoothStreaming, RTSP, Progressive.`
 
 ## Blocks
 
@@ -63,14 +101,10 @@ adds about 12 MB to apps.
 | `Play(source, title)` / `PlayFrom(source, title, positionMs)` | Plays media, replacing the queue |
 | `AddToQueue(source, title)` / `InsertAt(index, source, title)` | Adds media to the queue |
 | `RemoveAt(index)` / `MoveItem(from, to)` | Edits the queue |
-| `AddSubtitle(source, language, label)` | Adds a subtitle file to the most recently added media |
-| `ClipMedia(startMs, endMs)` | Plays only part of the most recently added media |
-| `SetThumbnailTrack(vttUrl)` | Shows thumbnails from a WebVTT thumbnail track (like `storyboard.vtt`) while scrubbing the most recently added media |
-| `SetThumbnails(spriteUrl, columns, rows, intervalSeconds)` | Shows thumbnails from a single sprite sheet grid while scrubbing the most recently added media |
-| `SetDrm(scheme, licenseUrl, headers)` | Plays the most recently added media with Widevine, ClearKey or PlayReady DRM |
-| `SetClearKeys(keys)` | Plays the most recently added media with ClearKey DRM from known keys (key ID → key, in hex), without a license server |
-| `SetMediaType(type)` | Sets the format (HLS, DASH, SmoothStreaming, RTSP, Progressive) of the most recently added media |
-| `SetMetadata(artist, description, artworkUrl)` | Sets details of the most recently added media |
+| `SetMediaItems(mediaItems)` | Plays a list of [media items](#media-items), replacing the queue |
+| `AddMediaItem(mediaItem)` / `AddMediaItems(mediaItems)` | Adds media items to the end of the queue |
+| `ReplaceMediaItem(index, mediaItem)` / `GetMediaItemAt(index)` | Replaces or reads a media item in the queue |
+| `SetMediaItemField(index, field, value)` and one block per part of a media item | Changes one field of a queued media item |
 | `SetHeader(name, value)` / `ClearHeaders()` | HTTP headers sent with every media request |
 | `SeekToLiveEdge()` | Jumps to the live edge of a live stream |
 | `Download(source, title)` / `RemoveDownload(source)` / `RemoveAllDownloads()` | Downloads media for offline playback |
@@ -93,7 +127,13 @@ Events: `PlaybackStateChanged`, `IsPlayingChanged`, `BufferingChanged`, `Positio
 `DeviceVolumeChanged`,
 `PlayerError(message, errorCode, category)` with category Network, NotFound, Format, Decoder,
 DRM or Other. An index outside the queue raises `Screen.ErrorOccurred`
-with error number 30101, one outside a track list with 30102, and a malformed ClearKey key with 30105.
+with error number 30101, one outside a track list with 30102, a malformed ClearKey key with 30105, and
+an invalid media item with 30106.
+
+Deprecated blocks, kept working for existing projects but hidden from the blocks drawer:
+`AddSubtitle`, `ClipMedia`, `SetDrm`, `SetClearKeys`, `SetMediaType`, `SetMetadata`,
+`SetThumbnails` and `SetThumbnailTrack`. They change the most recently added media; use
+media items instead.
 
 Properties, grouped in the designer:
 
