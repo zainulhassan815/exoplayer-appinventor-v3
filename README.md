@@ -1,5 +1,7 @@
 # ExoPlayer for App Inventor (v3)
 
+![Media3 × App Inventor](docs/images/banner.png)
+
 A video and audio player extension for MIT App Inventor and App Inventor based
 platforms, built on [AndroidX Media3](https://developer.android.com/media/media3).
 
