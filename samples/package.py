@@ -5,6 +5,7 @@ import sys
 import zipfile
 
 SAMPLE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "basic")
+TEMPLATES = (".scm", ".bky", ".properties")
 
 
 def package(aix_path, aia_path):
@@ -13,8 +14,11 @@ def package(aix_path, aia_path):
         for root, _, files in os.walk(SAMPLE):
             for name in files:
                 path = os.path.join(root, name)
-                content = open(path, encoding="utf-8").read().replace("{{MEDIA3_VERSION}}", str(component["version"]))
-                aia.writestr(os.path.relpath(path, SAMPLE), content)
+                if name.endswith(TEMPLATES):
+                    content = open(path, encoding="utf-8").read().replace("{{MEDIA3_VERSION}}", str(component["version"]))
+                    aia.writestr(os.path.relpath(path, SAMPLE), content)
+                else:
+                    aia.write(path, os.path.relpath(path, SAMPLE))
         for name in aix.namelist():
             if not name.endswith("/"):
                 aia.writestr(f"assets/external_comps/{name}", aix.read(name))

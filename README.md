@@ -31,7 +31,9 @@ real AARs with their resources.
    extension ships, so the player doesn't work in it.
 
 Each release also has `Media3Sample.aia`, a ready-made project to import (My Projects →
-Import project), and `dev.dreamerslab.media3.md`, the documentation of every block.
+Import project) with a queue of every kind of media: MP4 with subtitles and thumbnails, HLS,
+DASH, SmoothStreaming, Widevine and ClearKey DRM, a live stream and internet radio. The
+release also has `dev.dreamerslab.media3.md`, the documentation of every block.
 
 Requirements: Android 6.0 or newer (`CaptureFrame` needs Android 7.0). The extension
 adds about 12 MB to apps.
