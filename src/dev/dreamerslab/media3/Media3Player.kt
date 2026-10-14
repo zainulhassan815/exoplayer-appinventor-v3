@@ -1372,7 +1372,7 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     @SimpleProperty
     fun PositionUpdateInterval(milliseconds: Int) {
         positionUpdateInterval = milliseconds.coerceAtLeast(0)
-        onIsPlayingChanged(player.isPlaying)
+        schedulePositionUpdates(player.isPlaying)
     }
 
     @SimpleProperty(description = "Position up to which media has loaded, in milliseconds.")
@@ -1556,9 +1556,13 @@ class Media3Player(container: ComponentContainer) : AndroidNonvisibleComponent(c
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
+        schedulePositionUpdates(isPlaying)
+        IsPlayingChanged(isPlaying)
+    }
+
+    private fun schedulePositionUpdates(isPlaying: Boolean) {
         mainThread.removeCallbacks(positionUpdates)
         if (isPlaying && positionUpdateInterval > 0) mainThread.post(positionUpdates)
-        IsPlayingChanged(isPlaying)
     }
 
     override fun onPlayerError(error: PlaybackException) =
