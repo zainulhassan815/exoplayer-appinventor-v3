@@ -7,13 +7,3 @@
 -keepnames class * implements com.google.appinventor.components.common.OptionList {
   *;
 }
-
-# ProGuard sometimes (randomly) renames references to the following classes in 
-# the extensions, this rule prevents that from happening. Keep this rule even
-# if you don't use these classes in your extension.
--keeppackagenames gnu.kawa**, gnu.expr**
-
-# Repackages all the optimized classes into dev.dreamerslab.media3.repackaged package in resulting
-# AIX. Repackaging is necessary to avoid clashes with the other extensions that
-# might be using same libraries as you.
--repackageclasses dev.dreamerslab.media3.repacked
