@@ -6,7 +6,7 @@ A video and audio player extension for MIT App Inventor and App Inventor based
 platforms, built on [AndroidX Media3](https://developer.android.com/media/media3).
 
 The successor of [exoplayer-appinventor](https://github.com/zainulhassan815/exoplayer-appinventor),
-built with [Rush](https://github.com/zainulhassan815/rush-cli), which ships Media3 as
+built with [Rush](https://github.com/shreyashsaitwal/rush-cli), which ships Media3 as
 real AARs with their resources.
 
 <p>
@@ -218,7 +218,7 @@ radio streams with their titles in `StreamTitleChanged`.
 
 ## Building
 
-Requires [Rush 2.5](https://github.com/zainulhassan815/rush-cli) or newer and JDK 17.
+Requires [Rush 2.0.0](https://github.com/shreyashsaitwal/rush-cli) or newer and JDK 17.
 
 ```sh
 rush build
